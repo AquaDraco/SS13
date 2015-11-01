@@ -2,7 +2,7 @@
 I basically did what the community wanted me to and mashed together Ian's code and space carp code.
 */
 /mob/living/simple_animal/carp
-	name = "space carp"
+	name = "space carp"		//Note to self, get community to pick a name.
 	desc = "A friendly, bubble-blowing creature that resembles a fish."
 	icon_state = "carp"
 	icon_living = "carp"
@@ -21,7 +21,7 @@ I basically did what the community wanted me to and mashed together Ian's code a
 	friendly = "blows bubbles at"
 	see_in_dark = 5
 	speed = 0
-	maxHealth = 25
+	maxHealth = 25	//Keeping health low to keep carp from being used as shield
 	health = 25
 
 	//Space carp aren't affected by cold.
@@ -39,5 +39,6 @@ I basically did what the community wanted me to and mashed together Ian's code a
 	faction = "carp"	//This is to keep hostile space carp from attacking their domesticated cousins
 
 //This proc was copied from the original space carp code, including the comments.
+//I wonder if this counts as stealing comments?
 /mob/living/simple_animal/carp/Process_Spacemove(var/check_drift = 0)
 	return 1	//No drifting in space for space carp!	//original comments do not steal
