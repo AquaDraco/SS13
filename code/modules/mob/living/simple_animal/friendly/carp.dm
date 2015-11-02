@@ -81,7 +81,7 @@ Can we even call it a space carp anymore? (The answer is yes)
 		return 0
 
 /mob/living/simple_animal/friendly/carp/proc/reset_oxygen()
-	oxygen = max_oxygen
+	oxygen_left = max_oxygen
 
 /mob/living/simple_animal/friendly/carp/Die()
 	..()
