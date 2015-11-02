@@ -84,5 +84,5 @@ Can we even call it a space carp anymore? (The answer is yes)
 	oxygen_left = max_oxygen
 
 /mob/living/simple_animal/friendly/carp/Die()
+	emote("exhales slowly as its eyes glass over")	//Carp can only emote right before they actually die.
 	..()
-	emote("exhales slowly as its eyes glass over")
