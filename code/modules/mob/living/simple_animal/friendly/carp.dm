@@ -28,7 +28,10 @@ Can we even call it a space carp anymore? (The answer is yes)
 	speed = 0
 	maxHealth = 25	//Keeping health low to keep carp from being used as shield
 	health = 25
+
+	var/max_oxygen = 10		//The maximum amount of oxygen the fish can store in its lungs
 	var/oxygen_left = 10	//The amount of oxygen remaining in the space carp's fish lungs
+	var/suffocation_damage = 5	//Amount of damage taken every second when suffocating
 
 	//Space carp aren't affected by cold.
 	min_oxy = 0
@@ -47,22 +50,39 @@ Can we even call it a space carp anymore? (The answer is yes)
 	//Turf or object containers the carp can breathe in.
 	var/water_containers = list(/turf/unsimulated/beach/water,
 								/turf/simulated/floor/beach/water,
+								/turf/unsimulated/beach/coastline,	//The coastline is mostly covered by water
+								/turf/simulated/floor/beach/coastline,
 								/obj/item/weapon/watertank,
 								/obj/structure/reagent_dispensers/watertank,
 								/obj/structure/reagent_dispensers/water_cooler)
-	var/tickticktick = 0
+
 //Unlike other animals, the carp requires water to breathe. Or drink. Or something.
 /mob/living/simple_animal/friendly/carp/Life()
 	..()
-	if(loc in water_containers)
-		oxygen_left = 10
+	if(stat != DEAD)	//Reduces some unnecessary overhead in case someone decides to spawn 100 of these
+		breathe()
+
+/mob/living/simple_animal/friendly/carp/proc/breathe()
+	if(in_water())
+		reset_oxygen()
 	else
 		oxygen_left--
 		if(oxygen_left < 0)
-			if(health <= 5)
-				emote("exhales slowly as its eyes glass over")
-			else if(prob(50))
+			adjustBruteLoss(suffocation_damage)
+			if((health >= 0) && prob(50))	//Check to make sure the fish is still alive before we do the emote
 				pick(emote("twitches weakly"), emote("breathes weakly"))
-			health -= 5
 		else if(prob(30))
 			emote("flops around gasping for water")
+
+/mob/living/simple_animal/friendly/carp/proc/in_water()
+	if(loc.type in water_containers)
+		return 1
+	else
+		return 0
+
+/mob/living/simple_animal/friendly/carp/proc/reset_oxygen()
+	oxygen = max_oxygen
+
+/mob/living/simple_animal/friendly/carp/Die()
+	..()
+	emote("exhales slowly as its eyes glass over")
