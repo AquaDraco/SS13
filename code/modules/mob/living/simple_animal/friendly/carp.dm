@@ -16,7 +16,7 @@ Can we even call it a space carp anymore? (The answer is yes)
 	speak = list("Blub-blub", "Blub", "Blub?", "Blub!")
 	speak_emote = list("blubs")
 	emote_hear = list("blubs")
-	emote_see = list("blows bubbles softly into the air")
+	emote_see = list("blows bubbles softly into the air", "does a flip")
 	speak_chance = 1
 	turns_per_move = 10
 	meat_type = /obj/item/weapon/reagent_containers/food/snacks/carpmeat
