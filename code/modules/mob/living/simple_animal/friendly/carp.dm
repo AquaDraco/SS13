@@ -1,7 +1,12 @@
 /* This space carp code is for a "friendly" version of the space carp.
 I basically did what the community wanted me to and mashed together Ian's code and space carp code.
+This space carp is going to be able to swim in water (but die outside of it)
+Since there isn't water in space, the carp is going to die a tragic death in space.
+Furthermore, since the fish can't survive in space, it won't be able to swim in space either!
+
+Can we even call it a space carp anymore? (The answer is yes)
 */
-/mob/living/simple_animal/carp
+/mob/living/simple_animal/friendly/carp
 	name = "space carp"		//Note to self, get community to pick a name.
 	desc = "A friendly, bubble-blowing creature that resembles a fish."
 	icon_state = "carp"
@@ -23,6 +28,7 @@ I basically did what the community wanted me to and mashed together Ian's code a
 	speed = 0
 	maxHealth = 25	//Keeping health low to keep carp from being used as shield
 	health = 25
+	var/oxygen_left = 10	//The amount of oxygen remaining in the space carp's fish lungs
 
 	//Space carp aren't affected by cold.
 	min_oxy = 0
@@ -38,7 +44,25 @@ I basically did what the community wanted me to and mashed together Ian's code a
 
 	faction = "carp"	//This is to keep hostile space carp from attacking their domesticated cousins
 
-//This proc was copied from the original space carp code, including the comments.
-//I wonder if this counts as stealing comments?
-/mob/living/simple_animal/carp/Process_Spacemove(var/check_drift = 0)
-	return 1	//No drifting in space for space carp!	//original comments do not steal
+	//Turf or object containers the carp can breathe in.
+	var/water_containers = list(/turf/unsimulated/beach/water,
+								/turf/simulated/floor/beach/water,
+								/obj/item/weapon/watertank,
+								/obj/structure/reagent_dispensers/watertank,
+								/obj/structure/reagent_dispensers/water_cooler)
+	var/tickticktick = 0
+//Unlike other animals, the carp requires water to breathe. Or drink. Or something.
+/mob/living/simple_animal/friendly/carp/Life()
+	..()
+	if(loc in water_containers)
+		oxygen_left = 10
+	else
+		oxygen_left--
+		if(oxygen_left < 0)
+			if(health <= 5)
+				emote("exhales slowly as its eyes glass over")
+			else if(prob(50))
+				pick(emote("twitches weakly"), emote("breathes weakly"))
+			health -= 5
+		else if(prob(30))
+			emote("flops around gasping for water")
