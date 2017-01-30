@@ -81,9 +81,11 @@ Chaplain
 
 		usr << browse(null, "window=editicon") // Close window
 
-/datum/job/chaplain/equip_items(var/mob/living/carbon/human/H)
+/datum/job/chaplain/equip_items(var/mob/living/carbon/human/H, visualsOnly = FALSE)
 	H.equip_to_slot_or_del(new /obj/item/clothing/under/rank/chaplain(H), slot_w_uniform)
 	H.equip_to_slot_or_del(new /obj/item/clothing/shoes/sneakers/black(H), slot_shoes)
+	if(visualsOnly)
+		return
 
 	var/obj/item/weapon/storage/book/bible/B = new /obj/item/weapon/storage/book/bible/booze(H)
 	spawn(0)
@@ -113,8 +115,9 @@ Chaplain
 			if("homosexuality")
 				B.name = "Guys Gone Wild"
 			if("lol", "wtf", "gay", "penis", "ass", "poo", "badmin", "shitmin", "deadmin", "cock", "cocks")
-				B.name = pick("Woodys Got Wood: The Aftermath", "War of the Cocks", "Sweet Bro and Hella Jef: Expanded Edition")
-				H.setBrainLoss(100) // starts off retarded as fuck
+				new_religion = "Fart Jokes"
+				B.name = "Book of Toilet Humor"
+				H.setBrainLoss(100) // starts off dumb
 			if("science")
 				B.name = pick("Principle of Relativity", "Quantum Enigma: Physics Encounters Consciousness", "Programming the Universe", "Quantum Physics and Theology", "String Theory for Dummies", "How To: Build Your Own Warp Drive", "The Mysteries of Bluespace", "Playing God: Collector's Edition")
 			else

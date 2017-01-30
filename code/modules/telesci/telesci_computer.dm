@@ -84,8 +84,14 @@
 	else if(istype(W, /obj/item/device/multitool))
 		var/obj/item/device/multitool/M = W
 		if(M.buffer && istype(M.buffer, /obj/machinery/telepad))
+			if(telepad)
+				telepad.computer = null
 			telepad = M.buffer
+			telepad.computer = src
 			M.buffer = null
+			if(telepad.cant_link)
+				telepad.computer = null
+				telepad = null
 			user << "<span class = 'caution'>You upload the data from the [W.name]'s buffer.</span>"
 	else
 		..()
@@ -298,9 +304,9 @@
 		telefail()
 		temp_msg = "ERROR!<BR>Elevation is less than 1 or greater than 90."
 		return
-	if(z_co == 2 || z_co < 1 || z_co > 6)
+	if(z_co == 2 || z_co < 1 || z_co > MAX_Z_LEVELS)
 		telefail()
-		temp_msg = "ERROR! Sector is less than 1, <BR>greater than 6, or equal to 2."
+		temp_msg = "ERROR! Sector is less than 1, <BR>greater than [MAX_Z_LEVELS], or equal to 2."
 		return
 	if(teles_left > 0)
 		doteleport(user)
@@ -349,7 +355,7 @@
 		var/new_z = input("Please input desired sector.", name, z_co) as num
 		if(..())
 			return
-		z_co = Clamp(round(new_z), 1, 10)
+		z_co = Clamp(round(new_z), 1, MAX_Z_LEVELS)
 
 	if(href_list["ejectGPS"])
 		inserted_gps.loc = loc
@@ -363,17 +369,22 @@
 			temp_msg = "ERROR!<BR>No data stored."
 
 	if(href_list["send"])
-		sending = 1
-		teleport(usr)
+		if(!telepad.cant_activate)
+			if(!telepad.cant_switch)
+				sending = 1
+			teleport(usr)
 
 	if(href_list["receive"])
-		sending = 0
-		teleport(usr)
+		if(!telepad.cant_activate)
+			if(!telepad.cant_switch)
+				sending = 0
+			teleport(usr)
 
 	if(href_list["recal"])
-		recalibrate()
-		sparks()
-		temp_msg = "NOTICE:<BR>Calibration successful."
+		if(!telepad.cant_calibrate || !telepad.cant_activate)
+			recalibrate()
+			sparks()
+			temp_msg = "NOTICE:<BR>Calibration successful."
 
 	if(href_list["eject"])
 		eject()

@@ -1,62 +1,37 @@
 //TODO: rewrite and standardise all controller datums to the datum/controller type
 //TODO: allow all controllers to be deleted for clean restarts (see WIP master controller stuff) - MC done - lighting done
 
-/client/proc/restart_controller(controller in list("Master","Failsafe","Lighting","Supply Shuttle", "Virtual Reality","Firedome"))
+/client/proc/restart_controller(controller in processScheduler.processes)
 	set category = "Debug"
 	set name = "Restart Controller"
 	set desc = "Restart one of the various periodic loop controllers for the game (be careful!)"
 
 	if(!holder)	return
-	usr = null
+	//usr = null
 	src = null
-	switch(controller)
-		if("Master")
-			new /datum/controller/game_controller()
-			master_controller.process()
-			feedback_add_details("admin_verb","RMC")
-		if("Failsafe")
-			new /datum/controller/failsafe()
-			feedback_add_details("admin_verb","RFailsafe")
-		if("Lighting")
-			new /datum/controller/lighting()
-			lighting_controller.process()
-			feedback_add_details("admin_verb","RLighting")
-		if("Supply Shuttle")
-			supply_shuttle.process()
-			feedback_add_details("admin_verb","RSupply")
-		if("Virtual Reality")
-			qdel(vr_controller)
-			vr_controller = new /datum/virtual_reality_controller()
-			vr_controller.process()
-			feedback_add_details("admin_verb", "RVR")
-		if("Firedome")
-			qdel(firedome)
-			firedome = new /datum/controller/firedome()
-			firedome.process()
-			feedback_add_details("admin_verb", "RFD")
-	message_admins("Admin [key_name_admin(usr)] has restarted the [controller] controller.")
+
+	var/restarting = controller:name
+
+	processScheduler.killProcess(restarting)
+
+	message_admins("Admin [key_name_admin(usr)] has restarted the [restarting] controller.")
+	feedback_add_details("admin_verb", "RPS")
 	return
 
 
-/client/proc/debug_controller(controller in list("Master","Failsafe","Ticker","Lighting","Garbage","Air","Jobs","Sun","Radio","Supply Shuttle","Emergency Shuttle","Configuration","pAI", "Cameras", "Events", "Virtual Reality","Firedome", "Pod Configuration"))
+/client/proc/debug_controller(controller in list("Process Scheduler","Ticker","Garbage","Air","Jobs","Sun","Radio","Supply Shuttle","Emergency Shuttle","Configuration","pAI", "Cameras", "Events", "Virtual Reality","Firedome", "Pod Configuration", "Templates", "Template Config", "Space Grid"))
 	set category = "Debug"
 	set name = "Debug Controller"
 	set desc = "Debug the various periodic loop controllers for the game (be careful!)"
 
 	if(!holder)	return
 	switch(controller)
-		if("Master")
-			debug_variables(master_controller)
+		if("Process Scheduler")
+			debug_variables(processScheduler)
 			feedback_add_details("admin_verb","DMC")
-		if("Failsafe")
-			debug_variables(Failsafe)
-			feedback_add_details("admin_verb","DFailsafe")
 		if("Ticker")
 			debug_variables(ticker)
 			feedback_add_details("admin_verb","DTicker")
-		if("Lighting")
-			debug_variables(lighting_controller)
-			feedback_add_details("admin_verb","DLighting")
 		if("Garbage")
 			debug_variables(garbage)
 			feedback_add_details("admin_verb","DGarbage")
@@ -98,6 +73,12 @@
 			feedback_add_details("admin_verb", "FDevents")
 		if("Pod Configuration")
 			debug_variables(pod_config)
+		if("Templates")
+			debug_variables(template_controller)
+		if("Template Config")
+			debug_variables(template_config)
+		if("Space Grid")
+			debug_variables(space_grid)
 
 	message_admins("Admin [key_name_admin(usr)] is debugging the [controller] controller.")
 	return

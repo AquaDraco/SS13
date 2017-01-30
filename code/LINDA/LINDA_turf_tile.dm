@@ -15,10 +15,8 @@ turf/return_air()
 	//Create gas mixture to hold data for passing
 	var/datum/gas_mixture/GM = new
 
-	GM.oxygen = oxygen
-	GM.carbon_dioxide = carbon_dioxide
-	GM.nitrogen = nitrogen
-	GM.toxins = toxins
+	GM.gasses.Cut()
+	GM.gasses += gasses
 
 	GM.temperature = temperature
 
@@ -27,12 +25,13 @@ turf/return_air()
 turf/remove_air(amount as num)
 	var/datum/gas_mixture/GM = new
 
-	var/sum = oxygen + carbon_dioxide + nitrogen + toxins
+	var/sum = 0
+	for(var/G in gasses)
+		sum += gasses[G]
+
 	if(sum>0)
-		GM.oxygen = (oxygen/sum)*amount
-		GM.carbon_dioxide = (carbon_dioxide/sum)*amount
-		GM.nitrogen = (nitrogen/sum)*amount
-		GM.toxins = (toxins/sum)*amount
+		for (var/G in gasses)
+			GM.gasses[G] = (gasses[G]/sum)*amount
 
 	GM.temperature = temperature
 
@@ -56,11 +55,8 @@ turf/simulated/New()
 
 	if(!blocks_air)
 		air = new
-
-		air.oxygen = oxygen
-		air.carbon_dioxide = carbon_dioxide
-		air.nitrogen = nitrogen
-		air.toxins = toxins
+		air.gasses.Cut()
+		air.gasses += gasses
 
 		air.temperature = temperature
 
@@ -302,13 +298,15 @@ atom/movable/proc/experience_pressure_difference(pressure_difference, direction)
 /datum/excited_group/proc/merge_groups(var/datum/excited_group/E)
 	if(turf_list.len > E.turf_list.len)
 		air_master.excited_groups -= E
-		for(var/turf/simulated/T in E.turf_list)
+		for(var/X in E.turf_list)
+			var/turf/simulated/T = X
 			T.excited_group = src
 			turf_list += T
 			reset_cooldowns()
 	else
 		air_master.excited_groups -= src
-		for(var/turf/simulated/T in turf_list)
+		for(var/X in turf_list)
+			var/turf/simulated/T = X
 			T.excited_group = E
 			E.turf_list += T
 			E.reset_cooldowns()
@@ -318,39 +316,23 @@ atom/movable/proc/experience_pressure_difference(pressure_difference, direction)
 
 /datum/excited_group/proc/self_breakdown()
 	var/datum/gas_mixture/A = new
-	var/datum/gas/sleeping_agent/S = new
-	A.trace_gases += S
-	for(var/turf/simulated/T in turf_list)
-		A.oxygen 		+= T.air.oxygen
-		A.carbon_dioxide+= T.air.carbon_dioxide
-		A.nitrogen 		+= T.air.nitrogen
-		A.toxins 		+= T.air.toxins
+	for(var/X in turf_list)
+		var/turf/simulated/T = X
+		for (var/G in T.air.gasses)
+			A.add_gas(G, T.air.gasses[G])
 
-		if(T.air.trace_gases.len)
-			for(var/datum/gas/N in T.air.trace_gases)
-				S.moles += N.moles
-
-	for(var/turf/simulated/T in turf_list)
-		T.air.oxygen		= A.oxygen/turf_list.len
-		T.air.carbon_dioxide= A.carbon_dioxide/turf_list.len
-		T.air.nitrogen		= A.nitrogen/turf_list.len
-		T.air.toxins		= A.toxins/turf_list.len
-
-		if(S.moles > 0)
-			if(T.air.trace_gases.len)
-				for(var/datum/gas/G in T.air.trace_gases)
-					G.moles = S.moles/turf_list.len
-			else
-				var/datum/gas/sleeping_agent/G = new
-				G.moles = S.moles/turf_list.len
-				T.air.trace_gases += G
+	for(var/X in turf_list)
+		var/turf/simulated/T = X
+		for(var/G in A.gasses)
+			T.air.gasses[G] = A.gasses[G]/turf_list.len
 
 		if(T.air.check_tile_graphic())
 			T.update_visuals(T.air)
 
 
 /datum/excited_group/proc/dismantle()
-	for(var/turf/simulated/T in turf_list)
+	for(var/X in turf_list)
+		var/turf/simulated/T = X
 		T.excited = 0
 		T.recently_active = 0
 		T.excited_group = null
@@ -358,7 +340,8 @@ atom/movable/proc/experience_pressure_difference(pressure_difference, direction)
 	garbage_collect()
 
 /datum/excited_group/proc/garbage_collect()
-	for(var/turf/simulated/T in turf_list)
+	for(var/X in turf_list)
+		var/turf/simulated/T = X
 		T.excited_group = null
 	turf_list.Cut()
 	air_master.excited_groups -= src

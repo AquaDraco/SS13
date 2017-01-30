@@ -54,6 +54,11 @@
 		return 1
 	return 0
 
+/proc/isborer(A)
+	if(istype(A, /mob/living/simple_animal/borer))
+		return 1
+	return 0
+
 /proc/iscorgi(A)
 	if(istype(A, /mob/living/simple_animal/corgi))
 		return 1
@@ -85,7 +90,7 @@
 	return 0
 
 /proc/isclown(A)
-	if(istype(A, /mob/living/simple_animal/hostile/retaliate/clown))
+	if(istype(A, /mob/living/carbon/human/npc/clown))
 		return 1
 	return 0
 
@@ -211,6 +216,29 @@ proc/isorgan(A)
 		p++
 	return sanitize(t)
 
+proc/slur(n)
+	var/phrase = html_decode(n)
+	var/leng = lentext(phrase)
+	var/counter=lentext(phrase)
+	var/newphrase=""
+	var/newletter=""
+	while(counter>=1)
+		newletter=copytext(phrase,(leng-counter)+1,(leng-counter)+2)
+		if(rand(1,3)==3)
+			if(lowertext(newletter)=="o")	newletter="u"
+			if(lowertext(newletter)=="s")	newletter="ch"
+			if(lowertext(newletter)=="a")	newletter="ah"
+			if(lowertext(newletter)=="u")	newletter="oo"
+			if(lowertext(newletter)=="c")	newletter="k"
+		if(rand(1,20)==20)
+			if(newletter==" ")	newletter="...huuuhhh..."
+			if(newletter==".")	newletter=" *BURP*."
+		switch(rand(1,20))
+			if(1)	newletter+="'"
+			if(10)	newletter+="[newletter]"
+			if(20)	newletter+="[newletter][newletter]"
+		newphrase+="[newletter]";counter-=1
+	return newphrase
 
 /proc/stutter(n)
 	var/te = html_decode(n)
@@ -234,6 +262,26 @@ proc/isorgan(A)
 		t = text("[t][n_letter]")//since the above is ran through for each letter, the text just adds up back to the original word.
 		p++//for each letter p is increased to find where the next letter will be.
 	return copytext(sanitize(t),1,MAX_MESSAGE_LEN)
+
+//reagent speechs
+/proc/sedated(n)
+	var/speech = lowertext(n)
+	var/phrase = html_decode(speech)
+	var/leng = lentext(phrase)
+	var/counter = lentext(phrase)
+	var/newphrase = ""
+	var/newletter = ""
+	while(counter>=1)
+		newletter = copytext(phrase, (leng - counter) + 1 , (leng - counter) + 2)
+		if(newletter == " " && prob(25))
+			newletter = pick("... ",".. ")
+		if(newletter == "," || newletter == "." || newletter == "!" || newletter == "-" || newletter == "'" || newletter == "~" || newletter == "`") // removes puncuation to add its own
+			newletter = ""
+		newphrase += "[newletter]"
+		counter -= 1
+	return newphrase
+
+//reagent speechs end
 
 /proc/derpspeech(message, stuttering)
 	message = replacetext(message, " am ", " ")
@@ -409,6 +457,8 @@ proc/is_special_character(mob/M) // returns 1 for special characters and 2 for h
 				return 1
 		return 0
 	if(M.mind && M.mind.special_role)//If they have a mind and special role, they are some type of traitor or antagonist.
+		if(M.mind.assigned_role == "SPECIAL") // unless they are special..
+			return 0
 		switch(ticker.mode.config_tag)
 			if("revolution")
 				if((M.mind in ticker.mode.head_revolutionaries) || (M.mind in ticker.mode.revolutionaries))
@@ -433,6 +483,25 @@ proc/is_special_character(mob/M) // returns 1 for special characters and 2 for h
 
 /mob/proc/has_mutation(var/mutation)
 	return mutation in src.mutations ? 1 : 0
+
+
+//for mobs larger then 32x32
+/mob/proc/GetDirectionalTurfs(var/direction, var/corners = 0)
+	var/size_x = (bound_width/32)
+	var/size_y = (bound_height/32)
+	var/turf/origin = get_turf(src)
+
+	switch(direction)
+		if(NORTH)
+			return block(locate(origin.x + (corners?-1:0), origin.y + size_y, origin.z), locate(origin.x + size_x - (corners?0:1), origin.y + size_y, origin.z))
+		if(WEST)
+			return block(locate(origin.x - 1, origin.y - (corners?1:0), origin.z), locate(origin.x - 1, origin.y + size_y - (corners?0:1), origin.z))
+		if(SOUTH)
+			return block(locate(origin.x - (corners?1:0), origin.y - 1, origin.z), locate(origin.x + size_x - (corners?0:1), origin.y - 1, origin.z))
+		if(EAST)
+			return block(locate(origin.x + size_x, origin.y - (corners?1:0), origin.z), locate(origin.x + size_x, origin.y + size_y - (corners?0:1), origin.z))
+
+	return list()
 
 /proc/get_both_hands(mob/living/carbon/M)
 	var/list/hands = list(M.l_hand, M.r_hand)

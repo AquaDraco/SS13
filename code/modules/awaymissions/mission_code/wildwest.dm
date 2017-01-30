@@ -94,7 +94,7 @@
 			if("Wealth")
 				user << "<B>Your wish is granted, but at a terrible cost...</B>"
 				user << "The Wish Granter punishes you for your selfishness, claiming your soul and warping your body to match the darkness in your heart."
-				new /obj/structure/closet/syndicate/resources/everything(loc)
+				new /obj/structure/closet/syndicate/resources/everything(get_turf(src))
 				user.dna.mutantrace = "shadow"
 				user.update_body()
 			if("Immortality")
@@ -119,13 +119,9 @@
 				user.dna.mutantrace = "shadow"
 				user.update_body()
 			if("Peace")
-				user << "<B>Whatever alien sentience that the Wish Granter possesses is satisfied with your wish. There is a distant wailing as the last of the Faithless begin to die, then silence.</B>"
+				user << "<B>Whatever alien sentience that the Wish Granter possesses is satisfied with your wish. A staff that can spread peace appears before your eyes</B>"
 				user << "You feel as if you just narrowly avoided a terrible fate..."
-				for(var/mob/living/simple_animal/hostile/faithless/F in world)
-					F.health = -10
-					F.stat = 2
-					F.icon_state = "faithless_dead"
-
+				new /obj/item/weapon/gun/magic/staff/healing{recharge_rate = 2}(get_turf(src))
 
 ///////////////Meatgrinder//////////////
 
@@ -173,32 +169,25 @@
 
 /////For the Wishgranter///////////
 
+/mob/living/carbon/var/is_resurrecting = 0
+
 /mob/living/carbon/proc/immortality()
 	set category = "Immortality"
 	set name = "Resurrection"
+
+	if(is_resurrecting)
+		usr << "<span class='warning'>You can't do that yet.</span>"
+		return 0
 
 	var/mob/living/carbon/C = usr
 	if(!C.stat)
 		C << "<span class='notice'>You're not dead yet!</span>"
 		return
 	C << "<span class='notice'>Death is not your end!</span>"
-
+	is_resurrecting = 1
 	spawn(rand(800,1200))
-		if(C.stat == DEAD)
-			dead_mob_list -= C
-			living_mob_list += C
-		C.stat = CONSCIOUS
-		C.tod = null
-		C.setToxLoss(0)
-		C.setOxyLoss(0)
-		C.setCloneLoss(0)
-		C.SetParalysis(0)
-		C.SetStunned(0)
-		C.SetWeakened(0)
-		C.radiation = 0
-		C.heal_overall_damage(C.getBruteLoss(), C.getFireLoss())
-		C.reagents.clear_reagents()
+		C.revive()
 		C << "<span class='notice'>You have regenerated.</span>"
 		C.visible_message("<span class='warning'>[usr] appears to wake from the dead, having healed all wounds.</span>")
-		C.update_canmove()
+		is_resurrecting = 0
 	return 1

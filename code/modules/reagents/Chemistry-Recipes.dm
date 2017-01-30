@@ -384,7 +384,7 @@ silicate
 					if(istype(M:glasses, /obj/item/clothing/glasses/sunglasses))
 						continue
 
-				flick("e_flash", M.flash)
+				M.flash_eyes()
 				M.Weaken(5)
 
 			if(4 to 5)
@@ -392,7 +392,7 @@ silicate
 					if(istype(M:glasses, /obj/item/clothing/glasses/sunglasses))
 						continue
 
-				flick("e_flash", M.flash)
+				M.flash_eyes()
 				M.Stun(5)
 
 /datum/chemical_reaction/napalm
@@ -1138,18 +1138,8 @@ datum/chemical_reaction/pestkiller
 		if(holder && holder.my_atom)
 
 			var/blocked = list(/mob/living/simple_animal/hostile,
-				/mob/living/simple_animal/hostile/pirate,
-				/mob/living/simple_animal/hostile/pirate/ranged,
-				/mob/living/simple_animal/hostile/russian,
-				/mob/living/simple_animal/hostile/russian/ranged,
-				/mob/living/simple_animal/hostile/syndicate,
-				/mob/living/simple_animal/hostile/syndicate/melee,
-				/mob/living/simple_animal/hostile/syndicate/melee/space,
-				/mob/living/simple_animal/hostile/syndicate/ranged,
-				/mob/living/simple_animal/hostile/syndicate/ranged/space,
 				/mob/living/simple_animal/hostile/alien/queen/large,
 				/mob/living/simple_animal/hostile/retaliate,
-				/mob/living/simple_animal/hostile/retaliate/clown,
 				/mob/living/simple_animal/hostile/mushroom,
 				/mob/living/simple_animal/hostile/asteroid,
 				/mob/living/simple_animal/hostile/asteroid/basilisk,
@@ -1179,7 +1169,7 @@ datum/chemical_reaction/pestkiller
 
 			for(var/mob/living/carbon/human/H in viewers(get_turf(holder.my_atom), null))
 				if(H:eyecheck() <= 0)
-					flick("e_flash", H.flash)
+					H.flash_eyes()
 
 			for(var/i = 1, i <= 5, i++)
 				var/chosen = pick(critters)
@@ -1209,18 +1199,8 @@ datum/chemical_reaction/pestkiller
 		if(holder && holder.my_atom)
 
 			var/blocked = list(/mob/living/simple_animal/hostile,
-				/mob/living/simple_animal/hostile/pirate,
-				/mob/living/simple_animal/hostile/pirate/ranged,
-				/mob/living/simple_animal/hostile/russian,
-				/mob/living/simple_animal/hostile/russian/ranged,
-				/mob/living/simple_animal/hostile/syndicate,
-				/mob/living/simple_animal/hostile/syndicate/melee,
-				/mob/living/simple_animal/hostile/syndicate/melee/space,
-				/mob/living/simple_animal/hostile/syndicate/ranged,
-				/mob/living/simple_animal/hostile/syndicate/ranged/space,
 				/mob/living/simple_animal/hostile/alien/queen/large,
 				/mob/living/simple_animal/hostile/retaliate,
-				/mob/living/simple_animal/hostile/retaliate/clown,
 				/mob/living/simple_animal/hostile/mushroom,
 				/mob/living/simple_animal/hostile/asteroid,
 				/mob/living/simple_animal/hostile/asteroid/basilisk,
@@ -1236,7 +1216,7 @@ datum/chemical_reaction/pestkiller
 
 			for(var/mob/living/carbon/human/M in viewers(get_turf(holder.my_atom), null))
 				if(M:eyecheck() <= 0)
-					flick("e_flash", M.flash)
+					M.flash_eyes()
 
 			var/chosen = pick(critters)
 			var/mob/living/simple_animal/hostile/C = new chosen
@@ -1264,7 +1244,7 @@ datum/chemical_reaction/pestkiller
 
 	for(var/mob/living/carbon/human/M in viewers(get_turf(holder.my_atom), null))
 		if(M:eyecheck() <= 0)
-			flick("e_flash", M.flash)
+			M.flash_eyes()
 
 	for(var/i = 1, i <= 4 + rand(1,2), i++)
 		var/chosen = pick(borks)
@@ -1296,7 +1276,7 @@ datum/chemical_reaction/pestkiller
 
 	for(var/mob/living/carbon/human/M in viewers(get_turf(holder.my_atom), null))
 		if(M:eyecheck() <= 0)
-			flick("e_flash", M.flash)
+			M.flash_eyes()
 
 	for(var/i = 1, i <= 4 + rand(1,2), i++)
 		var/chosen = pick(borks)

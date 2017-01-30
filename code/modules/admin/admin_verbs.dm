@@ -16,6 +16,7 @@ var/list/admin_verbs_default = list(
 	/client/proc/cmd_admin_pm_panel,		/*admin-pm list*/
 	/client/proc/toggle_statpanel,
 	/client/proc/toggleahelp,
+	/client/proc/barewho,
 	/client/proc/reloadBadges
 	)
 
@@ -94,7 +95,8 @@ var/list/admin_verbs_primary_admin = list(
 	/client/proc/cmd_admin_dress,
 	/client/proc/respawn_character,
 	/datum/admins/proc/event_panel,
-	/datum/admins/proc/toggle_vr
+	/datum/admins/proc/toggle_vr,
+	/client/proc/TemplatePanel
 	)
 
 var/list/admin_verbs_senior_admin = list(
@@ -117,6 +119,7 @@ var/list/admin_verbs_senior_admin = list(
 var/list/admin_verbs_ban = list(
 	/client/proc/unban_panel,
 	/client/proc/jobbans,
+	/client/proc/oocbans,
 	/client/proc/unjobban_panel,
 	/client/proc/DB_ban_panel
 	)
@@ -156,27 +159,20 @@ var/list/admin_verbs_permissions = list(
 	/client/proc/edit_admin_permissions
 	)
 
-//verbs which can be hidden - needs work
+//verbs which can be hidden
+//please keep this up to date
 var/list/admin_verbs_hideable = list(
 	/client/proc/set_ooc,
 	/client/proc/deadmin_self,
-	/client/proc/deadchat,
-	/client/proc/toggleprayers,
-	/client/proc/toggle_hear_radio,
 	/datum/admins/proc/show_traitor_panel,
 	/datum/admins/proc/toggleenter,
 	/datum/admins/proc/toggleguests,
 	/datum/admins/proc/announce,
 	/datum/admins/proc/set_admin_notice,
-	/client/proc/admin_ghost,
 	/client/proc/toggle_view_range,
-	/datum/admins/proc/view_txt_log,
-	/datum/admins/proc/view_atk_log,
 	/client/proc/cmd_admin_subtle_message,
 	/client/proc/cmd_admin_check_contents,
 	/datum/admins/proc/access_news_network,
-	/client/proc/admin_call_shuttle,
-	/client/proc/admin_cancel_shuttle,
 	/client/proc/cmd_admin_direct_narrate,
 	/client/proc/cmd_admin_world_narrate,
 	/client/proc/check_words,
@@ -226,7 +222,27 @@ var/list/admin_verbs_hideable = list(
 	/client/proc/cmd_admin_pm_context,
 	/datum/admins/proc/show_player_panel,
 	/proc/possess,
-	/proc/release
+	/proc/release,
+	/client/proc/becomePAI,
+	/client/proc/reloadBadges,
+	/datum/admins/proc/spawn_atom,
+	/client/proc/stop_sounds,
+	/client/proc/TemplatePanel,
+	/client/proc/createPerseusMission,
+	/client/proc/spawncostume,
+	/client/proc/zombie_verb,
+	/client/proc/admin_memo,
+	/datum/admins/proc/toggleooc,
+	/datum/admins/proc/toggle_vr,
+	/client/proc/delete_fire,
+	/client/proc/reset_atmos,
+	/datum/admins/proc/event_panel,
+	/client/proc/fill_breach,
+	/datum/admins/proc/toggleoocdead,
+	/client/proc/togglebuildmodeself,
+	/client/proc/reenable_gravity_gen,
+	/client/proc/view_pod_logs,
+	/client/proc/respawn_character
 	)
 
 /client/proc/add_admin_verbs()
@@ -285,7 +301,8 @@ var/list/admin_verbs_hideable = list(
 		/client/proc/ticklag,
 		/client/proc/cmd_admin_grantfullaccess,
 		/client/proc/kaboom,
-		/client/proc/cmd_admin_areatest
+		/client/proc/cmd_admin_areatest,
+		/client/proc/readmin
 		)
 	if(holder)
 		verbs.Remove(holder.rank.adds)
@@ -392,6 +409,14 @@ var/list/admin_verbs_hideable = list(
 			holder.Jobbans()
 		else
 			holder.DB_ban_panel()
+	feedback_add_details("admin_verb","VJB") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
+	return
+
+/client/proc/oocbans()
+	set name = "Display OOC bans"
+	set category = "Admin"
+	if(holder)
+		holder.OOCbans()
 	feedback_add_details("admin_verb","VJB") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 	return
 
@@ -591,8 +616,9 @@ var/list/admin_verbs_hideable = list(
 			log_admin("[src] deadmined themself.")
 			message_admins("[src] deadmined themself.", 1)
 			deadmin()
+			deadmins += ckey
+			verbs += /client/proc/readmin
 			src << "<span class='interface'>You are now a normal player.</span>"
-			verbs += /client/proc/reload_admins
 	feedback_add_details("admin_verb","DAS") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
 /client/proc/toggle_log_hrefs()
@@ -613,3 +639,54 @@ var/list/admin_verbs_hideable = list(
 	if(holder)
 		src.holder.output_ai_laws()
 
+
+/client/proc/readmin()
+	set name = "Re-admin self"
+	set category = "Admin"
+	set desc = "Regain your admin powers."
+	var/list/rank_names = list()
+	for(var/datum/admin_rank/R in admin_ranks)
+		rank_names[R.name] = R
+	var/datum/admins/D = admin_datums[ckey]
+	var/rank = null
+	if(config.admin_legacy_system)
+		//load text from file
+		var/list/Lines = file2list("config/admins.txt")
+		for(var/line in Lines)
+			var/next = findtext(line, " = ")
+			var/ckey_text = ckeyEx(copytext(line, 1, next))
+			if(ckey_text != ckey)
+				continue
+			rank = ckeyEx(copytext(line, next, 0))
+			break
+	else
+		if(!dbcon.IsConnected())
+			message_admins("Warning, mysql database is not connected.")
+			src << "Warning, mysql database is not connected."
+			return
+		var/sql_ckey = sanitizeSQL(ckey)
+		var/DBQuery/query = dbcon.NewQuery("SELECT rank FROM admin WHERE ckey = '[sql_ckey]'")
+		query.Execute()
+		while(query.NextRow())
+			rank = ckeyEx(query.item[1])
+	if(!D)
+		if(rank_names[rank] == null)
+			var/error_extra = ""
+			if(!config.admin_legacy_system)
+				error_extra = " Check mysql DB connection."
+			error("Error while re-adminning [src], admin rank ([rank]) does not exist.[error_extra]")
+			src << "Error while re-adminning, admin rank ([rank]) does not exist.[error_extra]"
+			return
+		D = new(rank_names[rank],ckey)
+		var/client/C = directory[ckey]
+		D.associate(C)
+		message_admins("[src] re-adminned themselves.")
+		log_admin("[src] re-adminned themselves.")
+		deadmins -= ckey
+		feedback_add_details("admin_verb","RAS")
+		return
+	else
+		src << "You are already an admin."
+		verbs -= /client/proc/readmin
+		deadmins -= ckey
+		return

@@ -12,9 +12,13 @@
 	var/datum/gas_mixture/air_contents = return_air()
 	if(!air_contents)
 		return 0
+	if(!(PLASMA in air_contents.gasses)) //If no entries for plasma, this is gonna be a short burn.
+		air_contents.gasses[PLASMA] = 0
+	if (!(OXYGEN in air_contents.gasses))
+		air_contents.gasses[OXYGEN] = 0
 	if(active_hotspot)
 		if(soh)
-			if(air_contents.toxins > 0.5 && air_contents.oxygen > 0.5)
+			if(air_contents.gasses[PLASMA] > 0.5 && air_contents.gasses[OXYGEN] > 0.5)
 				if(active_hotspot.temperature < exposed_temperature)
 					active_hotspot.temperature = exposed_temperature
 				if(active_hotspot.volume < exposed_volume)
@@ -23,11 +27,13 @@
 
 	var/igniting = 0
 
-	if((exposed_temperature > PLASMA_MINIMUM_BURN_TEMPERATURE) && air_contents.toxins > 0.5)
+	if((exposed_temperature > PLASMA_MINIMUM_BURN_TEMPERATURE) && air_contents.gasses[PLASMA] > 0.5)
 		igniting = 1
 
 	if(igniting)
-		if(air_contents.oxygen < 0.5 || air_contents.toxins < 0.5)
+		if(!(OXYGEN in air_contents.gasses)) air_contents.gasses[OXYGEN] = 0
+		if(!(PLASMA in air_contents.gasses)) air_contents.gasses[PLASMA] = 0
+		if((OXYGEN in air_contents.gasses) && air_contents.gasses[OXYGEN] < 0.5 || (PLASMA in air_contents.gasses) && air_contents.gasses[PLASMA] < 0.5)
 			return 0
 
 		active_hotspot = new(src)
@@ -38,6 +44,33 @@
 			//remove just_spawned protection if no longer processing this cell
 		air_master.add_to_active(src, 0)
 	return igniting
+
+/proc/heat2color(temp)
+	return rgb(heat2color_r(temp), heat2color_g(temp), heat2color_b(temp))
+
+/proc/heat2color_r(temp)
+	temp /= 100
+	if(temp <= 66)
+		. = 255
+	else
+		. = max(0, min(255, 329.698727446 * (temp - 60) ** -0.1332047592))
+
+/proc/heat2color_g(temp)
+	temp /= 100
+	if(temp <= 66)
+		. = max(0, min(255, 99.4708025861 * log(temp) - 161.1195681661))
+	else
+		. = max(0, min(255, 288.1221695283 * ((temp - 60) ** -0.0755148492)))
+
+/proc/heat2color_b(temp)
+	temp /= 100
+	if(temp >= 66)
+		. = 255
+	else
+		if(temp <= 16)
+			. = 0
+		else
+			. = max(0, min(255, 138.5177312231 * log(temp - 10) - 305.0447927307))
 
 //This is the icon for fire on turfs, also helps for nurturing small fires until they are full tile
 /obj/effect/hotspot
@@ -78,11 +111,14 @@
 		volume = affected.fuel_burnt*FIRE_GROWTH_RATE
 		location.assume_air(affected)
 
-	for(var/atom/item in loc)
+	for(var/X in loc)
+		var/atom/item = X
 		if(item && item != src) // It's possible that the item is deleted in temperature_expose
 			item.fire_act(null, temperature, volume)
-	return 0
 
+	set_light(luminosity, 1, heat2color(temperature))
+
+	return 0
 
 /obj/effect/hotspot/process()
 	if(just_spawned)
@@ -101,7 +137,7 @@
 		Kill()
 		return
 
-	if(location.air.toxins < 0.5 || location.air.oxygen < 0.5)
+	if(location.air.gasses[PLASMA] < 0.5 || location.air.gasses[OXYGEN] < 0.5)
 		Kill()
 		return
 
@@ -143,6 +179,10 @@
 
 /obj/effect/hotspot/proc/Kill()
 	air_master.hotspots -= src
+	set_light(0)
+	var/turf/T = get_turf(src)
+	T.set_light(T.luminosity, T.light_range, T.light_color)
+
 	DestroyTurf()
 	qdel(src)
 

@@ -4,32 +4,7 @@
 	mymob.healths.name = "health"
 	mymob.healths.screen_loc = ui_health
 
-	mymob.blind = new /obj/screen()
-	mymob.blind.icon = 'icons/mob/screen_full.dmi'
-	mymob.blind.icon_state = "blackimageoverlay"
-	mymob.blind.name = " "
-	mymob.blind.screen_loc = "CENTER-7,CENTER-7"
-	mymob.blind.mouse_opacity = 0
-	mymob.blind.layer = 0
-
-	mymob.damageoverlay = new /obj/screen()
-	mymob.damageoverlay.icon = 'icons/mob/screen_full.dmi'
-	mymob.damageoverlay.icon_state = "oxydamageoverlay0"
-	mymob.damageoverlay.name = "dmg"
-	mymob.damageoverlay.blend_mode = BLEND_MULTIPLY
-	mymob.damageoverlay.screen_loc = "CENTER-7,CENTER-7"
-	mymob.damageoverlay.mouse_opacity = 0
-	mymob.damageoverlay.layer = 18.1 //The black screen overlay sets layer to 18 to display it, this one has to be just on top.
-
-	mymob.flash = new /obj/screen()
-	mymob.flash.icon_state = "blank"
-	mymob.flash.name = "flash"
-	mymob.flash.blend_mode = BLEND_ADD
-	mymob.flash.screen_loc = "WEST,SOUTH to EAST,NORTH"
-	mymob.flash.layer = 17
-
-	mymob.client.screen += list(mymob.healths, mymob.flash, mymob.damageoverlay, mymob.blind)
-
+	mymob.client.screen += list(mymob.healths)
 
 
 
@@ -111,11 +86,11 @@
 		var/breath_pressure = (breath.total_moles()*R_IDEAL_GAS_EQUATION*breath.temperature)/BREATH_VOLUME
 
 		//Partial pressure of the O2 in our breath
-		var/O2_pp = (breath.oxygen/breath.total_moles())*breath_pressure
+		var/O2_pp = (breath.gasses[OXYGEN]/breath.total_moles())*breath_pressure
 		// Same, but for the toxins
-		var/Toxins_pp = (breath.toxins/breath.total_moles())*breath_pressure
+		var/Toxins_pp = (breath.gasses[PLASMA]/breath.total_moles())*breath_pressure
 		// And CO2, lets say a PP of more than 10 will be bad (It's a little less really, but eh, being passed out all round aint no fun)
-		var/CO2_pp = (breath.carbon_dioxide/breath.total_moles())*breath_pressure
+		var/CO2_pp = (breath.gasses[CARBONDIOXIDE]/breath.total_moles())*breath_pressure
 
 		if(O2_pp < safe_oxygen_min) 			// Too little oxygen
 			if(prob(20))
@@ -124,21 +99,21 @@
 				O2_pp = 0.01
 			var/ratio = safe_oxygen_min/O2_pp
 			adjustOxyLoss(min(5*ratio, 7)) // Don't fuck them up too fast (space only does 7 after all!)
-			oxygen_used = breath.oxygen*ratio/6
+			oxygen_used = breath.gasses[OXYGEN]*ratio/6
 			oxygen_alert = max(oxygen_alert, 1)
 		/*else if (O2_pp > safe_oxygen_max) 		// Too much oxygen (commented this out for now, I'll deal with pressure damage elsewhere I suppose)
 			spawn(0) emote("cough")
 			var/ratio = O2_pp/safe_oxygen_max
 			oxyloss += 5*ratio
-			oxygen_used = breath.oxygen*ratio/6
+			oxygen_used = breath.gasses[OXYGEN]*ratio/6
 			oxygen_alert = max(oxygen_alert, 1)*/
 		else 									// We're in safe limits
 			adjustOxyLoss(-5)
-			oxygen_used = breath.oxygen/6
+			oxygen_used = breath.gasses[OXYGEN]/6
 			oxygen_alert = 0
 
-		breath.oxygen -= oxygen_used
-		breath.carbon_dioxide += oxygen_used
+		breath.add_gas(OXYGEN, -1*oxygen_used)
+		breath.add_gas(CARBONDIOXIDE, oxygen_used)
 
 		if(CO2_pp > safe_co2_max)
 			if(!co2overloadtime) // If it's the first breath with too much CO2 in it, lets start a counter, then have them pass out after 12s or so.
@@ -155,7 +130,7 @@
 			co2overloadtime = 0
 
 		if(Toxins_pp > safe_toxins_max) // Too much toxins
-			var/ratio = (breath.toxins/safe_toxins_max) * 10
+			var/ratio = (breath.gasses[PLASMA]/safe_toxins_max) * 10
 			//adjustToxLoss(Clamp(ratio, MIN_PLASMA_DAMAGE, MAX_PLASMA_DAMAGE))	//Limit amount of damage toxin exposure can do per second
 			if(reagents)
 				reagents.add_reagent("plasma", Clamp(ratio, MIN_PLASMA_DAMAGE, MAX_PLASMA_DAMAGE))
@@ -163,17 +138,15 @@
 		else
 			toxins_alert = 0
 
-		if(breath.trace_gases.len)	// If there's some other shit in the air lets deal with it here.
-			for(var/datum/gas/sleeping_agent/SA in breath.trace_gases)
-				var/SA_pp = (SA.moles/breath.total_moles())*breath_pressure
-				if(SA_pp > SA_para_min) // Enough to make us paralysed for a bit
-					Paralyse(3) // 3 gives them one second to wake up and run away a bit!
-					if(SA_pp > SA_sleep_min) // Enough to make us sleep as well
-						sleeping = max(sleeping+2, 10)
-				else if(SA_pp > 0.01)	// There is sleeping gas in their lungs, but only a little, so give them a bit of a warning
-					if(prob(20))
-						spawn(0) emote(pick("giggle", "laugh"))
-
+		if(breath.gasses[NITROUS])	// If there's some other shit in the air lets deal with it here.
+			var/SA_pp = (breath.gasses[NITROUS]/breath.total_moles())*breath_pressure
+			if(SA_pp > SA_para_min) // Enough to make us paralysed for a bit
+				Paralyse(3) // 3 gives them one second to wake up and run away a bit!
+				if(SA_pp > SA_sleep_min) // Enough to make us sleep as well
+					sleeping = max(sleeping+2, 10)
+			else if(SA_pp > 0.01)	// There is sleeping gas in their lungs, but only a little, so give them a bit of a warning
+				if(prob(20))
+					spawn(0) emote(pick("giggle", "laugh"))
 
 		if(breath.temperature > (T0C+66)) // Hot air hurts :(
 			if(prob(20))
@@ -391,22 +364,20 @@
 				else
 					bodytemp.icon_state = "temp-4"
 
-		client.screen.Remove(global_hud.blurry,global_hud.druggy,global_hud.vimpaired)
-
-		if(blind && stat != DEAD)
-			if(blinded)
-				blind.layer = 18
+		if(stat != DEAD)
+			if(disabilities & NEARSIGHTED)
+				overlay_fullscreen("nearsighted", /obj/screen/fullscreen/impaired, 1)
 			else
-				blind.layer = 0
+				clear_fullscreen("nearsighted")
+			if(eye_blurry)
+				overlay_fullscreen("blurry", /obj/screen/fullscreen/blurry)
+			else
+				clear_fullscreen("blurry")
+			if(druggy)
+				overlay_fullscreen("high", /obj/screen/fullscreen/high)
+			else
+				clear_fullscreen("high")
 
-				if(disabilities & NEARSIGHTED)
-					client.screen += global_hud.vimpaired
-
-				if(eye_blurry)
-					client.screen += global_hud.blurry
-
-				if(druggy)
-					client.screen += global_hud.druggy
 
 		if (stat != 2)
 			if (machine)

@@ -832,10 +832,21 @@
 				message_admins("\blue [key_name_admin(usr)] removed [t]", 1)
 				jobban_remove(t)
 				href_list["ban"] = 1 // lets it fall through and refresh
-				var/t_split = text2list(t, " - ")
+				var/t_split = splittext(t, " - ")
 				var/key = t_split[1]
 				var/job = t_split[2]
 				DB_ban_unban(ckey(key), BANTYPE_JOB_PERMA, job)
+
+	else if(href_list["removeoocban"])
+		if(!check_rights(R_BAN))	return
+
+		var/t = href_list["removeoocban"]
+		if(t)
+			if((alert("Do you want to unoocban [t]?","Unoocban confirmation", "Yes", "No") == "Yes") && t) //No more misclicks! Unless you do it twice.
+				log_admin("[key_name(usr)] removed [t]'s OOC ban")
+				message_admins("\blue [key_name_admin(usr)] removed [t]'s OOC ban", 1)
+				ooc_remove(t)
+				ooc_savebanfile()
 
 	else if(href_list["newban"])
 		if(!check_rights(R_BAN))	return
@@ -1017,6 +1028,29 @@
 		speech = sanitize(speech) // Nah, we don't trust them
 		log_admin("[key_name(usr)] forced [key_name(M)] to say: [speech]")
 		message_admins("\blue [key_name_admin(usr)] forced [key_name_admin(M)] to say: [speech]")
+
+	else if(href_list["forcelobby"])
+		if(!check_rights(R_PRIMARYADMIN))	return
+		var/mob/O = locate(href_list["forcelobby"])
+		if(!O) return
+		log_admin("[key_name(usr)] sent [key_name(O)] back to the lobby")
+		message_admins("\blue [key_name(usr)] sent [key_name(O)] back to the lobby")
+
+		if(!O.client)
+			log_game("[usr.key] Sendtolobby failed due to disconnect.")
+			return
+		O.client.screen.Cut()
+		if(!O.client)
+			log_game("[usr.key] Sendtolobby failed due to disconnect.")
+			return
+
+		var/mob/new_player/M = new /mob/new_player()
+		if(!O.client)
+			log_game("[usr.key] Sendtolobby failed due to disconnect.")
+			qdel(M)
+			return
+
+		M.key = O.key
 
 	else if(href_list["sendtoprison"])
 		if(!check_rights(R_SECONDARYADMIN))	return
@@ -1498,9 +1532,9 @@
 			alert("Select fewer object types, (max 5)")
 			return
 		else if(length(removed_paths))
-			alert("Removed:\n" + list2text(removed_paths, "\n"))
+			alert("Removed:\n" + jointext(removed_paths, "\n"))
 
-		var/list/offset = text2list(href_list["offset"],",")
+		var/list/offset = splittext(href_list["offset"],",")
 		var/number = dd_range(1, 100, text2num(href_list["object_count"]))
 		var/X = offset.len > 0 ? text2num(offset[1]) : 0
 		var/Y = offset.len > 1 ? text2num(offset[2]) : 0
@@ -1579,37 +1613,68 @@
 					break
 		return
 
-	else if(href_list["event_panel"])
-		if(!check_rights(R_FUN))	return
-		switch(href_list["event_panel"])
-			if("spawnevent")
-				feedback_inc("admin_secrets_fun_used",1)
-				feedback_add_details("admin_secrets_fun_used","EVE")
-				var/datum/round_event_control/E = locate(href_list["event"])
-				log_admin("[key_name(usr)] started event: [E.name]")
-				message_admins("[key_name(usr)] started event: [E.name]")
-				E.runEvent()
-				add2timeline("[E.name]",1)
-			if("next")
-				events.scheduled = 0
-				log_admin("[key_name(usr)] forced a random event")
-				message_admins("[key_name(usr)] forced a random event")
-			if("edit")
-				var/amount = input(usr, "How much? (0 to 10). -1 means ignore diffrence check", "Input") as num
-				amount = Clamp(amount,-1,100)
-				var/value = href_list["value"]
-				events.rating[value] = amount
-			if("settings")
-				switch(href_list["mode"])
-					if("auto")
-						events.autoratings = !events.autoratings
-					if("ender")
-						events.allow_enders = !events.allow_enders
-					if("random")
-						events.true_random = !events.true_random
-					if("unlucky")
-						events.adjust_spawnrate()
-		event_panel()
+	else if(href_list["template_panel"])
+		if(!check_rights(R_PRIMARYADMIN))
+			return 0
+
+		switch(href_list["action"])
+			if("place")
+				var/list/categories = template_controller.GetCategories(1)
+				var/category = input("Which category?", "Input") as anything in categories + "Cancel"
+				if(category == "Cancel")
+					return 0
+
+				var/list/templates = flist("[template_config.directory]/[category]/")
+				var/name = input("Which Template?", "Selection") in templates
+				var/path = "[template_config.directory]/[category]/[name]"
+
+				if(!fexists(path))
+					usr << "<span class='warning'>Template with name '[name]' does not exist.</span>"
+					return 0
+
+				var/turf/location = get_turf(owner.mob)
+
+				template_controller.placed_templates += template_controller.PlaceTemplateAt(location, path, name)
+				message_admins("[key_name_admin(usr)] placed template '[name]' at {[location.x], [location.y], [location.z]}")
+
+			if("upload")
+				if(!check_rights(R_SENIORADMIN))
+					return 0
+
+				var/file = input("Upload a .dmm file as a template", "Upload") as file
+				if(!file || !length(file))
+					return 0
+
+				var/turf/location = get_turf(owner.mob)
+				var/datum/dmm_object_collection/collection = template_controller.parser.GetCollection(file2list(file))
+
+				collection.Place(location, "uploaded-[owner.ckey]")
+				message_admins("[key_name_admin(usr)] placed an uploaded template at {[location.x], [location.y], [location.z]}")
+				template_controller.placed_templates += collection
+
+			if("delete")
+				if(!check_rights(R_SENIORADMIN))
+					return 0
+
+				var/datum/dmm_object_collection/template = locate(href_list["template"])
+				if(!template)
+					return 0
+
+				message_admins("[key_name_admin(usr)] has deleted template '[template.name]' at {[template.location.x], [template.location.y], [template.location.z]}")
+
+				template.Delete(remove_from_list=1)
+
+			if("reset")
+				if(!check_rights(R_SENIORADMIN))
+					return 0
+
+				var/datum/dmm_object_collection/template = locate(href_list["template"])
+				if(!template)
+					return 0
+
+				message_admins("[key_name_admin(usr)] has reset template '[template.name]' at {[template.location.x], [template.location.y], [template.location.z]}")
+
+				template.Reset()
 
 	else if(href_list["secretsfun"])
 		if(!check_rights(R_FUN))	return
@@ -1835,6 +1900,7 @@
 
 		var/ok = 0
 		switch(href_list["secretsadmin"])
+
 			if("clear_virus")
 				var/choice = input("Are you sure you want to cure all disease?") in list("Yes", "Cancel")
 				if(choice == "Yes")
@@ -1959,13 +2025,11 @@
 				for(var/law in crimelogs)
 					dat += "[law]<BR>"
 				usr << browse(dat, "window=crimelogs;size=800x500")
-
-			if("timeline_logs")
-				var/dat = "<B>Round Timeline</B><HR>"
-				if(ticker && ticker.intel)
-					for(var/X in ticker.timeline)
-						dat += "[X]<BR>"
-				usr << browse(dat, "window=eventslogs;size=800x500")
+			if("event_logs")
+				var/dat = "<B>Event Logs.</B><HR>"
+				for(var/e in events.events_log)
+					dat += "[e]<BR>"
+				usr << browse(dat, "window=eventlogs;size=800x500")
 
 	else if(href_list["secretscoder"])
 		if(!check_rights(R_DEBUG))	return
@@ -2202,3 +2266,80 @@
 		var/obj/pod/pod = locate(href_list["view_pod_debug"])
 		if(pod && istype(pod))
 			pod.OpenDebugMenu(owner.mob)
+
+	//event panel
+	else if(href_list["event_panel"])
+		if(href_list["add_cycler"])
+			new /datum/event_cycler/admin_playlist(rand(3000,9000), "Centcomm Official","#[rand(1,999)]")
+			message_admins("[key_name_admin(usr)] created a event cycler")
+			log_admin("[key_name(usr)] created a event cycler")
+		if(href_list["remove_cycler"])
+			var/datum/event_cycler/C = locate(href_list["remove_cycler"])
+			if(istype(C))
+				message_admins("[key_name_admin(usr)] removed cycler [C.npc_name]")
+				log_admin("[key_name(usr)] removed cycler [C.npc_name]")
+				qdel(C)
+		if(href_list["rename_cycler"])
+			var/datum/event_cycler/C = locate(href_list["rename_cycler"])
+			var/t = copytext(sanitize(input("Rename Cycler", "Rename", null, null)  as text),1,MAX_MESSAGE_LEN)
+			if(t)
+				C.npc_name = t
+		if(href_list["high_freq"])
+			var/datum/event_cycler/C = locate(href_list["high_freq"])
+			var/t = input("Enter new duration (Minutes):","Edit Frequency (high)", null ) as num
+			if(t)
+				t = t * 60 * 10
+				C.frequency_upper = t
+		if(href_list["low_freq"])
+			var/datum/event_cycler/C = locate(href_list["low_freq"])
+			var/t = input("Enter new duration (Minutes):","Edit Frequency (low)", null ) as num
+			if(t)
+				t = t * 60 * 10
+				C.frequency_lower = t
+		if(href_list["force"])
+			var/datum/event_cycler/C = locate(href_list["force"])
+			if(istype(C) && !C.paused || istype(C) && C.playlist.len)
+				C.force_fire()
+
+		if(href_list["status"])
+			var/datum/event_cycler/C = locate(href_list["status"])
+			if(istype(C))
+				C.paused = !C.paused
+				if(C.paused)
+					C.schedule = rand(C.frequency_lower,C.frequency_upper)
+		if(href_list["shuffle"])
+			var/datum/event_cycler/C = locate(href_list["shuffle"])
+			if(istype(C))
+				C.shuffle = !C.shuffle
+		if(href_list["alerts"])
+			var/datum/event_cycler/C = locate(href_list["alerts"])
+			if(istype(C))
+				C.alerts = !C.alerts
+		if(href_list["remove_after_fire"])
+			var/datum/event_cycler/C = locate(href_list["remove_after_fire"])
+			if(istype(C))
+				C.remove_after_fire = !C.remove_after_fire
+		if(href_list["prevent_story_generation"])
+			var/datum/event_cycler/C = locate(href_list["prevent_story_generation"])
+			if(istype(C))
+				C.prevent_stories = !C.prevent_stories
+
+		if(href_list["add_event"])
+			var/datum/event_cycler/C = locate(href_list["add_event"])
+			if(istype(C))
+				var/list/D = list()
+				D["Cancel"] = "Cancel"
+				for(var/datum/round_event_control/E in sortAtom(events.all_events))
+					if(E.event_flags & EVENT_HIDDEN) continue
+					D[E.name] = E
+
+				var/t = input(usr, "Add event?") as null|anything in D
+				if(t && t != "Cancel")
+					C.playlist.Add(D[t])
+		if(href_list["remove_event"])
+			var/datum/event_cycler/C = locate(href_list["cycler"])
+			if(istype(C))
+				var/datum/round_event_control/E = locate(href_list["remove_event"])
+				C.playlist.Remove(E)
+		event_panel()
+

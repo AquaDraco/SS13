@@ -79,14 +79,13 @@ var/list/advance_cures = 	list(
 /datum/disease/advance/stage_act()
 	..()
 	if(symptoms && symptoms.len)
-
-		if(!processing)
-			processing = 1
+		if(affected_mob && affected_mob.stat != DEAD)
+			if(!processing)
+				processing = 1
+				for(var/datum/symptom/S in symptoms)
+					S.Start(src)
 			for(var/datum/symptom/S in symptoms)
-				S.Start(src)
-
-		for(var/datum/symptom/S in symptoms)
-			S.Activate(src)
+				S.Activate(src)
 	else
 		CRASH("We do not have any symptoms during stage_act()!")
 
@@ -292,7 +291,7 @@ var/list/advance_cures = 	list(
 		for(var/datum/symptom/S in symptoms)
 			L += S.id
 		L = sortList(L) // Sort the list so it doesn't matter which order the symptoms are in.
-		var/result = list2text(L, ":")
+		var/result = jointext(L, ":")
 		id = result
 	return id
 

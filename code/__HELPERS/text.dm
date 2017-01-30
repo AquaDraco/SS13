@@ -174,15 +174,6 @@
 	if(start)
 		return findtextEx(text, suffix, start, null)
 
-/*
- * Text modification
- */
-/proc/replacetext(text, find, replacement)
-	return list2text(text2list(text, find), replacement)
-
-/proc/replacetextEx(text, find, replacement)
-	return list2text(text2listEx(text, find), replacement)
-
 //Adds 'u' number of zeros ahead of the text 't'
 /proc/add_zero(t, u)
 	while (length(t) < u)
@@ -350,6 +341,12 @@ var/list/binary = list("0","1")
 		. += copytext(from, start, end)
 	else
 		. += copytext(into, start, end)
+
+/proc/get_chem_id(var/chem_name)
+	for(var/datum/reagent/R in reagent_defines)
+		if(R.name == chem_name)
+			return R.id
+	return
 
 //finds the first occurrence of one of the characters from needles argument inside haystack
 //it may appear this can be optimised, but it really can't. findtext() is so much faster than anything you can do in byondcode.

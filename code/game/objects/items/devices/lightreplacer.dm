@@ -104,6 +104,23 @@
 		else
 			user << "You need a working light."
 			return
+	if(istype(W, /obj/item/weapon/storage/box))
+		var/obj/item/weapon/storage/box/B = W
+		var/total = 0
+		if(B.contents) // It needs to actually have things in it, asshole
+			for (var/obj/item/weapon/light/L in B.contents)
+				if((L.status == 0) && (uses < max_uses))
+					AddUses(1)
+					total++
+					qdel(L)
+					if(total == 5)
+						break //For now, only do up to 5 at a time.
+			if (total)
+				user << "You insert [total] bulbs into the [src.name]. You have [uses] lights remaining."
+		else
+			user << "There are no bulbs in this box."
+			return
+
 
 
 /obj/item/device/lightreplacer/attack_self(mob/user)
@@ -149,7 +166,7 @@
 				var/obj/item/weapon/light/L1 = new target.light_type(target.loc)
 				L1.status = target.status
 				L1.rigged = target.rigged
-				L1.brightness = target.brightness
+				L1.brightness_range = target.brightness_range
 				L1.switchcount = target.switchcount
 				target.switchcount = 0
 				L1.update()
@@ -162,7 +179,7 @@
 			target.status = L2.status
 			target.switchcount = L2.switchcount
 			target.rigged = emagged
-			target.brightness = L2.brightness
+			target.brightness_range = L2.brightness_range
 			target.on = target.has_power()
 			target.update()
 			qdel(L2)

@@ -9,9 +9,12 @@ var/list/possible_changeling_IDs = list("Alpha","Beta","Gamma","Delta","Epsilon"
 	antag_flag = BE_CHANGELING
 	restricted_jobs = list("AI", "Cyborg", "Perseus Security Enforcer", "Perseus Security Commander")
 	protected_jobs = list("Security Officer", "Warden", "Detective", "Head of Security", "Captain")
+	required_jobs_on_minimum = list(list("Captain","Head of Personnel","Head of Security","Chief Engineer","Research Director","Chief Medical Officer","AI"),
+									list("Security Officer", "Warden","Head of Security", "Captain"))//security of any kind + head or AI needed
 	required_players = 15
 	required_enemies = 1
 	recommended_enemies = 4
+	can_run_at_minimum = 1
 
 	uplink_welcome = "Syndicate Uplink Console:"
 	uplink_uses = 10
@@ -50,7 +53,7 @@ var/list/possible_changeling_IDs = list("Alpha","Beta","Gamma","Delta","Epsilon"
 	var/num_changelings = 1
 
 	if(config.changeling_scaling_coeff)
-		num_changelings = max(1, round((num_players())/(config.changeling_scaling_coeff)))
+		num_changelings = Clamp(max(config.changeling_scaling_minimum, round((num_players())/((config.changeling_scaling_coeff)))),1,round(num_players() / 2))
 	else
 		num_changelings = max(1, min(num_players(), changeling_amount))
 
@@ -84,10 +87,10 @@ var/list/possible_changeling_IDs = list("Alpha","Beta","Gamma","Delta","Epsilon"
 	return
 
 /datum/game_mode/changeling/make_antag_chance(var/mob/living/carbon/human/character) //Assigns changeling to latejoiners
-	if(changelings.len >= round(joined_player_list.len / config.changeling_scaling_coeff) + 1) //Caps number of latejoin antagonists
+	if(changelings.len >= round(joined_player_list.len / 2)) //Caps number of latejoin antagonists. Basically changelings cannot out number crew
 		return
 	if (prob(100/config.changeling_scaling_coeff))
-		if(character.client.prefs.be_special & BE_CHANGELING)
+		if(character.client.prefs.be_special_gamemode & BE_CHANGELING)
 			if(!jobban_isbanned(character.client, "changeling") && !jobban_isbanned(character.client, "Syndicate"))
 				if(!(character.job in ticker.mode.restricted_jobs))
 					character.mind.make_Changling()

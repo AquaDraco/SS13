@@ -274,7 +274,7 @@ var/list/sacrificed = list()
 					else
 						corpse_to_raise = M
 						if(M.key)
-							M.ghostize(1)	//kick them out of their body
+							M.ghostize(1,1)	//kick them out of their body
 						break
 			if(!corpse_to_raise)
 				if(is_sacrifice_target)
@@ -1030,7 +1030,7 @@ var/list/sacrificed = list()
 
 					if(iscarbon(L))
 						var/mob/living/carbon/C = L
-						flick("e_flash", C.flash)
+						C.flash_eyes()
 						if(C.stuttering < 1 && (!(HULK in C.mutations)))
 							C.stuttering = 1
 						C.Weaken(1)
@@ -1057,7 +1057,7 @@ var/list/sacrificed = list()
 
 					else if(iscarbon(T))
 						var/mob/living/carbon/C = T
-						flick("e_flash", C.flash)
+						C.flash_eyes()
 						if (!(HULK in C.mutations))
 							C.silent += 15
 						C.Weaken(10)

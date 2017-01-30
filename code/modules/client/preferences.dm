@@ -4,23 +4,32 @@ var/list/preferences_datums = list()
 
 #define IS_MODE_COMPILED(MODE) (ispath(text2path("/datum/game_mode/"+(MODE))))
 
-var/global/list/special_roles = list( //keep synced with the defines BE_* in setup.dm
+var/global/list/special_roles_gamemode = list( //keep synced with the defines BE_* in setup.dm
 //some autodetection here.
 	"traitor" = IS_MODE_COMPILED("traitor"),             // 0
-	"operative" = IS_MODE_COMPILED("nuclear"),           // 1
-	"changeling" = IS_MODE_COMPILED("changeling"),       // 2
-	"wizard" = IS_MODE_COMPILED("wizard"),               // 3
-	"malf AI" = IS_MODE_COMPILED("malfunction"),         // 4
-	"revolutionary" = IS_MODE_COMPILED("revolution"),    // 5
-	"alien" = 1, //always show                			 // 6
-	"pAI candidate" = 1,                                 // 7
+	"doubleagent" = IS_MODE_COMPILED("traitor"),         // 1
+	"betrayed" = IS_MODE_COMPILED("traitor"),            // 2
+	"operative" = IS_MODE_COMPILED("nuclear"),           // 3
+	"changeling" = IS_MODE_COMPILED("changeling"),       // 4
+	"wizard" = IS_MODE_COMPILED("wizard"),               // 5
+	"malf AI" = IS_MODE_COMPILED("malfunction"),         // 6
+	"revolutionary" = IS_MODE_COMPILED("revolution"),    // 7
 	"cultist" = IS_MODE_COMPILED("cult"),                // 8
-	"blob" = IS_MODE_COMPILED("blob"),					 // 9
-	"ninja" = 1,										 // 10
-	"honking angel candidate" = 1, //zombie    		     // 11
-	"positronic brain" = 1								 // 12
+	"blob" = IS_MODE_COMPILED("blob")					 // 9
 )
+var/global/list/special_roles_event = list(
+	"alien" = 1, //always show   						 // 0
+	"honking angel candidate" = 1, //zombie    		     // 1
+	"ninja" = 1,										 // 2
+	"explorer" = 1,										 // 3
+	"cosmic bear of death" = 1,							 // 4
+	"time traveller" = 1								 // 5
 
+)
+var/global/list/special_roles_other = list(
+	"positronic brain" = 1,								// 0
+	"pAI candidate" = 1									// 1
+)
 
 datum/preferences
 	//doohickeys for savefiles
@@ -37,7 +46,10 @@ datum/preferences
 	//game-preferences
 	var/lastchangelog = ""				//Saved changlog filesize to detect if there was a change
 	var/ooccolor = "#002eb8"
-	var/be_special = 0					//Special role selection
+	var/be_special_gamemode = 0					//Special role selection
+	var/be_special_event = 0					//Special role selection
+	var/be_special_other = 0					//Special role selection
+	var/event_disable = 0				//toggle to quickly ignore all candidacy for random events
 	var/UI_style = "Midnight"
 	var/toggles = TOGGLES_DEFAULT
 	var/ghost_form = "ghost"
@@ -62,8 +74,7 @@ datum/preferences
 	var/prefer_dept = "Any"				//What security department you prefer
 
 		//Mob preview
-	var/icon/preview_icon_front = null
-	var/icon/preview_icon_side = null
+	var/icon/preview_icon = null
 
 		//Jobs, uses bitflags
 	var/job_civilian_high = 0
@@ -96,6 +107,9 @@ datum/preferences
 		if(!IsGuestKey(C.key))
 			load_path(C.ckey)
 			unlock_content = C.IsByondMember()
+			if(!unlock_content)
+				if(C.ckey in badges_by_ckey)
+					unlock_content = 1
 			if(unlock_content)
 				max_save_slots = 8
 	var/loaded_preferences_successfully = load_preferences()
@@ -113,9 +127,8 @@ datum/preferences
 /datum/preferences
 	proc/ShowChoices(mob/user)
 		if(!user || !user.client)	return
-		update_preview_icon()
-		user << browse_rsc(preview_icon_front, "previewicon.png")
-		user << browse_rsc(preview_icon_side, "previewicon2.png")
+		update_preview_icon(user.client)
+		user << browse_rsc(preview_icon, "previewicon.png")
 		var/dat = "<center>"
 
 		dat += "<a href='?_src_=prefs;preference=tab;tab=0' [current_tab == 0 ? "class='linkOn'" : ""]>Character Settings</a> "
@@ -143,6 +156,8 @@ datum/preferences
 							if(!name)	name = "Character[i]"
 							//if(i!=1) dat += " | "
 							dat += "<a style='white-space:nowrap;' href='?_src_=prefs;preference=changeslot;num=[i];' [i == default_slot ? "class='linkOn'" : ""]>[name]</a> "
+							if(IsMultiple(i,4))
+								dat += "<br>"
 						dat += "</center>"
 
 				dat += "<center><h2>Occupation Choices</h2>"
@@ -163,7 +178,7 @@ datum/preferences
 
 				dat += "</td><td valign='center'>"
 
-				dat += "<div class='statusDisplay'><center><img src=previewicon.png height=64 width=64><img src=previewicon2.png height=64 width=64></center></div>"
+				dat += "<div class='statusDisplay'><center><img src=previewicon.png width=[preview_icon.Width()] height=[preview_icon.Height()]></center></div>"
 
 				dat += "</td></tr></table>"
 
@@ -207,22 +222,7 @@ datum/preferences
 				dat += "<h3>Character preferences</h3>"
 
 				dat += "<b>Prefered security department:</b> <a href='?_src_=prefs;preference=set_prefer_dept;task=input'>[prefer_dept]</a><br>"
-				if(jobban_isbanned(user, "Syndicate"))
-					dat += "<b>You are banned from antagonist roles.</b>"
-					src.be_special = 0
-				else
-					var/n = 0
-					for (var/i in special_roles)
-						if(special_roles[i]) //if mode is available on the server
-							if(jobban_isbanned(user, i))
-								dat += "<b>Be [i]:</b> <font color=red><b>\[BANNED]</b></font><br>"
-							else if(i == "pai candidate")
-								if(jobban_isbanned(user, "pAI"))
-									dat += "<b>Be [i]:</b> <font color=red><b>\[BANNED]</b></font><br>"
-							else
-								dat += "<b>Be [i]:</b> <a href='?_src_=prefs;preference=be_special;num=[n]'>[src.be_special&(1<<n) ? "Yes" : "No"]</a><br>"
-						n++
-
+				dat += "<b>Special Roles:</b> <a href='?_src_=prefs;preference=set_special;task=input'>Edit</a><br>"
 
 				dat += "</td></tr></table>"
 
@@ -235,6 +235,8 @@ datum/preferences
 				dat += "<b>Play lobby music:</b> <a href='?_src_=prefs;preference=lobby_music'>[(toggles & SOUND_LOBBY) ? "Yes" : "No"]</a><br>"
 				dat += "<b>Ghost ears:</b> <a href='?_src_=prefs;preference=ghost_ears'>[(toggles & CHAT_GHOSTEARS) ? "Nearest Creatures" : "All Speech"]</a><br>"
 				dat += "<b>Ghost sight:</b> <a href='?_src_=prefs;preference=ghost_sight'>[(toggles & CHAT_GHOSTSIGHT) ? "Nearest Creatures" : "All Emotes"]</a><br>"
+				dat += "<b>Ghost Radio:</b> <a href='?_src_=prefs;preference=ghost_radio'>[(toggles & GHOST_RADIO) ? "Yes" : "No"]</a><br>"
+				dat += "<b>Ghost Tablets:</b> <a href='?_src_=prefs;preference=ghost_tablet'>[(toggles & GHOST_MESSENGER) ? "Yes" : "No"]</a><br>"
 				dat += "<b>Pull requests:</b> <a href='?_src_=prefs;preference=pull_requests'>[(toggles & CHAT_PULLR) ? "Yes" : "No"]</a><br>"
 				dat += "<b>Statpanel Info</b> <a href='?_src_=prefs;preference=statpanel'>[(toggles & STATPANEL) ? "Yes" : "No"]</a><br>"
 
@@ -295,8 +297,55 @@ datum/preferences
 		dat += "</center>"
 
 		//user << browse(dat, "window=preferences;size=560x560")
-		var/datum/browser/popup = new(user, "preferences", "<div align='center'>Character Setup</div>", 740, 690)
+		var/datum/browser/popup = new(user, "preferences", "<div align='center'>Character Setup</div>", 740, 720)
 		popup.set_content(dat)
+		popup.open(0)
+
+	proc/display_be_special(user)
+		var/opt = ""
+		opt += "<a href='?_src_=prefs;preference=job;task=close'>Close</a><br><br>"
+		if(jobban_isbanned(user, "Syndicate"))
+			opt += "<b>You are banned from antagonist roles.</b>"
+			src.be_special_gamemode = 0
+			src.be_special_event = 0
+		else
+			var/n = 0
+			for (var/i in special_roles_gamemode)
+				if(special_roles_gamemode[i]) //if mode is available on the server
+					if(jobban_isbanned(user, i))
+						opt += "<b>Be [i]:</b> <font color=red><b>\[BANNED]</b></font><br>"
+					else if(i == "pai candiopte")
+						if(jobban_isbanned(user, "pAI"))
+							opt += "<b>Be [i]:</b> <font color=red><b>\[BANNED]</b></font><br>"
+					else
+						opt += "<b>Be [i]:</b> <a href='?_src_=prefs;preference=be_special_gamemode;num=[n]'>[src.be_special_gamemode&(1<<n) ? "Yes" : "No"]</a><br>"
+				n++
+			var/ne = 0
+			opt += "<br>"
+			for (var/i in special_roles_event)
+				if(jobban_isbanned(user, i))
+					opt += "<b>Be [i]:</b> <font color=red><b>\[BANNED]</b></font><br>"
+				else if(i == "pai candiopte")
+					if(jobban_isbanned(user, "pAI"))
+						opt += "<b>Be [i]:</b> <font color=red><b>\[BANNED]</b></font><br>"
+				else
+					opt += "<b>Be [i]:</b> <a href='?_src_=prefs;preference=be_special_event;num=[ne]'>[src.be_special_event&(1<<ne) ? "Yes" : "No"]</a><br>"
+				ne++
+		var/no = 0
+		opt += "<br>"
+		for (var/i in special_roles_other)
+			if(jobban_isbanned(user, i))
+				opt += "<b>Be [i]:</b> <font color=red><b>\[BANNED]</b></font><br>"
+			else if(i == "pai candiopte")
+				if(jobban_isbanned(user, "pAI"))
+					opt += "<b>Be [i]:</b> <font color=red><b>\[BANNED]</b></font><br>"
+			else
+				opt += "<b>Be [i]:</b> <a href='?_src_=prefs;preference=be_special_other;num=[no]'>[src.be_special_other&(1<<no) ? "Yes" : "No"]</a><br>"
+			no++
+		user << browse(null, "window=preferences")
+		var/datum/browser/popup = new(user, "preferences_roles", "<div align='center'>Special Roles</div>", 320, 600)
+		popup.set_window_options("can_close=0")
+		popup.set_content(opt)
 		popup.open(0)
 
 	proc/SetChoices(mob/user, limit = 18, list/splitJobs = list("Chief Engineer"), widthPerColumn = 295, height = 630)
@@ -547,12 +596,12 @@ datum/preferences
 		return 0
 
 	proc/process_link(mob/user, list/href_list)
-		if(!istype(user, /mob/new_player))	return
 
 		if(href_list["preference"] == "job")
 			switch(href_list["task"])
 				if("close")
 					user << browse(null, "window=mob_occupation")
+					user << browse(null, "window=preferences_roles") //closes special role menu IF APPLICABLE
 					ShowChoices(user)
 				if("reset")
 					ResetJobs()
@@ -706,6 +755,9 @@ datum/preferences
 								prefer_dept = "Any"
 							else
 								prefer_dept = "Any"
+					if("set_special")
+						display_be_special(user)
+						return
 					if("s_tone")
 						var/new_s_tone = input(user, "Choose your character's skin-tone:", "Character Preference")  as null|anything in skin_tones
 						if(new_s_tone)
@@ -762,10 +814,21 @@ datum/preferences
 					if("hear_mentorhelps")
 						toggles ^= SOUND_MENTORHELP
 
-					if("be_special")
+					if("be_special_gamemode")
 						var/num = text2num(href_list["num"])
-						be_special ^= (1<<num)
-
+						be_special_gamemode ^= (1<<num)
+						display_be_special(user)
+						return
+					if("be_special_event")
+						var/num = text2num(href_list["num"])
+						be_special_event ^= (1<<num)
+						display_be_special(user)
+						return
+					if("be_special_other")
+						var/num = text2num(href_list["num"])
+						be_special_other ^= (1<<num)
+						display_be_special(user)
+						return
 					if("name")
 						be_random_name = !be_random_name
 
@@ -784,6 +847,11 @@ datum/preferences
 
 					if("ghost_sight")
 						toggles ^= CHAT_GHOSTSIGHT
+					if("ghost_radio")
+						toggles ^= GHOST_RADIO
+					if("ghost_tablet")
+						toggles ^= GHOST_MESSENGER
+
 					if("pull_requests")
 						toggles ^= CHAT_PULLR
 					if("ui")

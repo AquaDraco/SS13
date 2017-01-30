@@ -47,13 +47,13 @@ obj/machinery/air_sensor/process()
 			var/total_moles = air_sample.total_moles()
 			if(total_moles > 0)
 				if(output&4)
-					signal.data["oxygen"] = round(100*air_sample.oxygen/total_moles,0.1)
+					signal.data["oxygen"] = round(100*air_sample.gasses[OXYGEN]/total_moles,0.1)
 				if(output&8)
-					signal.data["toxins"] = round(100*air_sample.toxins/total_moles,0.1)
+					signal.data["toxins"] = round(100*air_sample.gasses[PLASMA]/total_moles,0.1)
 				if(output&16)
-					signal.data["nitrogen"] = round(100*air_sample.nitrogen/total_moles,0.1)
+					signal.data["nitrogen"] = round(100*air_sample.gasses[NITROGEN]/total_moles,0.1)
 				if(output&32)
-					signal.data["carbon_dioxide"] = round(100*air_sample.carbon_dioxide/total_moles,0.1)
+					signal.data["carbon_dioxide"] = round(100*air_sample.gasses[CARBONDIOXIDE]/total_moles,0.1)
 			else
 				signal.data["oxygen"] = 0
 				signal.data["toxins"] = 0
@@ -228,10 +228,10 @@ obj/machinery/computer/general_air_control/large_tank_control/proc/reconnect(mob
 	var/list/devices = air_freq.devices["_default"]
 	devices |= gas_freq.devices["_default"]
 	for(var/obj/machinery/atmospherics/unary/vent_pump/U in devices)
-		var/list/text = text2list(U.id_tag, "_")
+		var/list/text = splittext(U.id_tag, "_")
 		IO |= text[1]
 	for(var/obj/machinery/atmospherics/unary/outlet_injector/U in devices)
-		var/list/text = text2list(U.id, "_")
+		var/list/text = splittext(U.id, "_")
 		IO |= text[1]
 	if(!IO.len)
 		user << "<span class='alert'>No machinery detected.</span>"
@@ -243,7 +243,7 @@ obj/machinery/computer/general_air_control/large_tank_control/proc/reconnect(mob
 		var/list/new_devices = gas_freq.devices["4"]
 		new_devices |= air_freq.devices["4"]
 		for(var/obj/machinery/air_sensor/U in new_devices)
-			var/list/text = text2list(U.id_tag, "_")
+			var/list/text = splittext(U.id_tag, "_")
 			if(text[1] == S)
 				sensors = list("[S]_sensor" = "Tank")
 				break

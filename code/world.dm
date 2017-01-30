@@ -51,6 +51,7 @@
 
 	jobban_loadbanfile()
 	appearance_loadbanfile()
+	ooc_loadbanfile()
 	jobban_updatelegacybans()
 	LoadBans()
 	investigate_reset()
@@ -60,13 +61,6 @@
 		config.server_name += " #[(world.port % 1000) / 100]"
 
 	timezoneOffset = text2num(time2text(0,"hh")) * 36000
-
-	makepowernets()
-
-	sun = new /datum/sun()
-	radio_controller = new /datum/controller/radio()
-	data_core = new /obj/effect/datacore()
-	paiController = new /datum/paiController()
 
 	if(config.sql_enabled)
 		if(!setup_database_connection())
@@ -86,19 +80,11 @@
 	slmaster.layer = FLY_LAYER
 	slmaster.mouse_opacity = 0
 
-	master_controller = new /datum/controller/game_controller()
-	spawn(-1)
-		master_controller.setup()
-		lighting_controller.Initialize()
+	processScheduler = new
+	processScheduler.setup()
 
 	src.update_world_name()
 	src.update_status()
-
-	if(!vr_controller)
-		vr_controller = new()
-
-	if(!mining_config)
-		mining_config = new()
 
 	process_teleport_locs()			//Sets up the wizard teleport locations
 	process_ghost_teleport_locs()	//Sets up ghost teleport locations.
@@ -372,7 +358,7 @@ var/list/TOPIC_PREV_CLIENT_LIST = list()
 		features += "hosted by <b>[config.hostedby]</b>"
 
 	if (features)
-		s += ": [list2text(features, ", ")]"
+		s += ": [jointext(features, ", ")]"
 
 	/* does this help? I do not know */
 	if (src.status != s)

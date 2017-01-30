@@ -356,7 +356,9 @@ Please contact me on #coderbus IRC. ~Carnie x
 		if(U.hastie)
 			var/tie_color = U.hastie.item_color
 			if(!tie_color) tie_color = U.hastie.icon_state
-			standing.overlays	+= image("icon"='icons/mob/ties.dmi', "icon_state"="[tie_color]")
+			var/image/I = image("icon"='icons/mob/ties.dmi', "icon_state"="[tie_color]")
+			I.color = U.hastie.color
+			standing.overlays	+= I
 	else
 		// Automatically drop anything in store / id / belt if you're not wearing a uniform.	//CHECK IF NECESARRY
 		for(var/obj/item/thing in list(r_store, l_store, wear_id, belt))						//
@@ -519,6 +521,9 @@ Please contact me on #coderbus IRC. ~Carnie x
 		if(wear_suit.blood_DNA)
 			var/obj/item/clothing/suit/S = wear_suit
 			standing.overlays	+= image("icon"='icons/effects/blood.dmi', "icon_state"="[S.blood_overlay_type]blood")
+
+		if(wear_suit.color)
+			standing.color = wear_suit.color
 
 	apply_overlay(SUIT_LAYER)
 

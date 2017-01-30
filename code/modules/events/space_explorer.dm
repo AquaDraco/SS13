@@ -1,16 +1,12 @@
 /datum/round_event_control/space_explorer
 	name = "Space Explorers"
 	typepath = /datum/round_event/space_explorer
+	event_flags = EVENT_STANDARD
 	max_occurrences = 1
-	needs_ghosts = 1
-	rating = list(
-				"Gameplay"	= 75,
-				"Dangerous"	= 35
-				)
+	candidate_flag = BE_EXPLORER
+	candidates_needed = 1
 
 /datum/round_event/space_explorer
-	announceWhen	= 5
-
 	var/spawncount = 1
 	var/successSpawn = 0	//So we don't make a command report if nothing gets spawned.
 
@@ -35,52 +31,43 @@
 						/obj/item/weapon/spellbook/oneuse/mindswap=1
 						)
 
-/datum/round_event/space_explorer/setup()
-	spawncount = rand(1, 3)
+	Setup()
+		spawncount = rand(1, 3)
 
-/datum/round_event/space_explorer/announce()
-	priority_announce("Distress signal recieved from nearby unknown spacecrafts", "Distress Signal")
+	Alert()
+		spawn(0)
+			//Send the signal to everyone
+			for(var/mob/M in player_list)
+				if(!istype(M,/mob/new_player))
+					M << sound('sound/machines/signal.ogg',0,null,null,25) // lower this sound because its a LOUD BEEP
+			sleep(50)
+			priority_announce("Distress signal recieved from nearby unknown spacecrafts", "Distress Signal")
 
-/datum/round_event/space_explorer/tick_queue()
-	var/list/candidates = get_candidates(BE_OPERATIVE)
-	if(candidates.len)
-		unqueue()
+	Start()
+		while(spawncount > 0 && candidates.len)
+			var/client/C = pick_n_take(candidates)
+			var/X = rand(100,200)
+			var/Y = rand(100,200)
+			var/Z = 6
+			var/obj/pod/large/pre_equipped/ship = new()
+			ship.z = Z
+			ship.x = X
+			ship.y = Y
+			var/mob/living/carbon/human/H = new()
+			H.loc = ship
+			H.key = C.key
+			suit_up(H)
+			ship.pilot = H
+			ship.PrintSystemNotice("Systems initialized.")
+			if(ship.power_source)
+				ship.PrintSystemNotice("Power Charge: [ship.power_source.charge]/[ship.power_source.maxcharge] ([ship.power_source.percent()]%)")
+			else
+				ship.PrintSystemAlert("No power source installed.")
+			ship.PrintSystemNotice("Integrity: [round((ship.health / ship.max_health) * 100)]%.")
 
-/datum/round_event/space_explorer/start()
-	var/list/candidates = get_candidates(BE_OPERATIVE)
-
-	if(!candidates.len && events.queue_ghost_events && !loopsafety)
-		queue()
-		return
-
-	while(spawncount > 0 && candidates.len)
-		var/client/C = pick_n_take(candidates)
-		var/X = rand(100,200)
-		var/Y = rand(100,200)
-		var/Z = 6
-		var/obj/pod/large/pre_equipped/ship = new()
-		ship.z = Z
-		ship.x = X
-		ship.y = Y
-		var/mob/living/carbon/human/H = new()
-		H.loc = ship
-		H.key = C.key
-		suit_up(H)
-		ship.pilot = H
-		ship.PrintSystemNotice("Systems initialized.")
-		if(ship.power_source)
-			ship.PrintSystemNotice("Power Charge: [ship.power_source.charge]/[ship.power_source.maxcharge] ([ship.power_source.percent()]%)")
-		else
-			ship.PrintSystemAlert("No power source installed.")
-		ship.PrintSystemNotice("Integrity: [round((ship.health / ship.max_health) * 100)]%.")
-
-		spawncount--
-		successSpawn = 1
-
-	//Send the signal to everyone
-	for(var/mob/M in player_list)
-		if(!istype(M,/mob/new_player))
-			M << sound('sound/machines/signal.ogg',0,null,null,25) // lower this sound because its a LOUD BEEP
+			spawncount--
+			successSpawn = 1
+			if (!prevent_stories) EventStory("The station recieved a strange visitor... a space explorer.")
 
 /datum/round_event/space_explorer/proc/suit_up(var/mob/living/carbon/human/H)
 	var/datum/preferences/A = H.client.prefs

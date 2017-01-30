@@ -21,14 +21,18 @@
 	var/station_was_nuked = 0 //see nuclearbomb.dm and malfunction.dm
 	var/explosion_in_progress = 0 //sit back and relax
 	var/list/datum/mind/modePlayer = new
+	var/list/datum/mind/reserved_minds = list()
 	var/list/datum/mind/antag_candidates = list()	// List of possible starting antags goes here
 	var/list/restricted_jobs = list()	// Jobs it doesn't make sense to be.  I.E chaplain or AI cultist
 	var/list/protected_jobs = list()	// Jobs that can't be traitors because
+	var/list/required_jobs_on_minimum = list()	// Jobs that are required for minimum mode
 	var/required_players = 0
 	var/required_enemies = 0
 	var/required_readies = 0
+	var/minimum_enemies = 1
 	var/recommended_enemies = 0
-	var/pre_setup_before_jobs = 0
+	var/minimum_mode = 0
+	var/can_run_at_minimum = 0
 	var/uplink_welcome = "Syndicate Uplink Console:"
 	var/uplink_uses = 10
 	var/antag_flag = null //preferences flag such as BE_WIZARD that need to be turned on for players to be antag
@@ -41,7 +45,7 @@
 
 ///can_start()
 ///Checks to see if the game can be setup and ran with the current number of players or whatnot.
-/datum/game_mode/proc/can_start()
+/datum/game_mode/proc/can_start(var/forced=0)
 	var/playerC = 0
 	var/readyC = 0
 	for(var/mob/new_player/player in player_list)
@@ -50,11 +54,48 @@
 		if((player.ready))
 			readyC++
 	if(!Debug2)
+		var/minicheck = 0
 		if(required_readies)
 			if(readyC < required_readies)
-				return 0
+				minicheck = 1
 		if(playerC < required_players)
-			return 0
+			minicheck = 1
+		if(minicheck && !forced)
+			if(config.allow_lowpop_modes && can_run_at_minimum) // check for scaled gamemodes, only on participating gamemodes.
+				var/list/jobs_needed = required_jobs_on_minimum
+				var/reserved_count = 0
+				for(var/job in jobs_needed)
+					if(islist(job))
+						var/match = 0
+						for(var/J in job)
+							for(var/mob/new_player/player in shuffle(player_list))
+								if(!player.ready || !player.mind || player.mind in reserved_minds) continue
+								if(player.mind.assigned_role == J)
+									reserved_count++
+									reserved_minds |= player.mind
+									match = 1
+									break
+							if(match) break
+					else
+						var/match = 0
+						for(var/mob/new_player/player in shuffle(player_list))
+							if(!player.ready || !player.mind || player.mind in reserved_minds) continue
+							if(player.mind.assigned_role == job)
+								reserved_count++
+								reserved_minds |= player.mind
+								match = 1
+								break
+						if(match) continue
+				if(reserved_count < jobs_needed.len)
+					return 0
+				minimum_mode = 1
+				antag_candidates = get_players_for_role(antag_flag)
+				if(!antag_candidates)
+					return 0
+				if(antag_candidates.len >= minimum_enemies && readyC / 2 >= minimum_enemies)
+					return 1
+			else
+				return 0
 	antag_candidates = get_players_for_role(antag_flag)
 	if(!Debug2)
 		if(antag_candidates.len < required_enemies)
@@ -63,6 +104,9 @@
 	else
 		world << "<span class='notice'>DEBUG: GAME STARTING WITHOUT PLAYER NUMBER CHECKS, THIS WILL PROBABLY BREAK SHIT."
 		return 1
+
+/datum/game_mode/proc/minimum_check()
+	return 0 //no by default
 
 
 ///pre_setup()
@@ -222,7 +266,7 @@
 	var/list/players = list()
 	var/list/candidates = list()
 	var/list/drafted = list()
-	var/datum/mind/applicant = null
+	//var/datum/mind/applicant = null
 
 	var/roletext
 	switch(role)
@@ -245,9 +289,13 @@
 
 	for(var/mob/new_player/player in players)
 		if(player.client && player.ready)
-			if(player.client.prefs.be_special & role)
-				if(!jobban_isbanned(player, "Syndicate") && !jobban_isbanned(player, roletext)) //Nodrak/Carn: Antag Job-bans
+			if(player.client.prefs.be_special_gamemode & role)
+				if(!jobban_isbanned(player, "Syndicate") && !jobban_isbanned(player, roletext) && (!(player.ckey in assignPerseus))) //Nodrak/Carn: Antag Job-bans // also prevent ready percs
 					candidates += player.mind				// Get a list of all the people who want to be the antagonist for this round
+
+	if(reserved_minds.len) 									// Remove players who are reserved for required jobs for the gamemode (minimum only)
+		for(var/datum/mind/player in reserved_minds)
+			candidates -= player
 
 	if(restricted_jobs)
 		for(var/datum/mind/player in candidates)
@@ -258,7 +306,7 @@
 	if(candidates.len < recommended_enemies)
 		for(var/mob/new_player/player in players)
 			if(player.client && player.ready)
-				if(!(player.client.prefs.be_special & role)) // We don't have enough people who want to be antagonist, make a seperate list of people who don't want to be one
+				if(!(player.client.prefs.be_special_gamemode & role)) // We don't have enough people who want to be antagonist, make a seperate list of people who don't want to be one
 					if(!jobban_isbanned(player, "Syndicate") && !jobban_isbanned(player, roletext)) //Nodrak/Carn: Antag Job-bans
 						drafted += player.mind
 
@@ -267,7 +315,7 @@
 			for(var/job in restricted_jobs)
 				if(player.assigned_role == job)
 					drafted -= player
-
+/* Disables drafting for now, if someone has an antag option off they shouldn't have to be forced to play it, might help "Frendly antegs"
 	drafted = shuffle(drafted) // Will hopefully increase randomness, Donkie
 
 	while(candidates.len < recommended_enemies)				// Pick randomlly just the number of people we need and add them to our list of candidates
@@ -279,6 +327,7 @@
 
 		else												// Not enough scrubs, ABORT ABORT ABORT
 			break
+*/
 /*
 	if(candidates.len < recommended_enemies && override_jobbans) //If we still don't have enough people, we're going to start drafting banned people.
 		for(var/mob/new_player/player in players)
@@ -293,7 +342,7 @@
 					drafted -= player
 
 	drafted = shuffle(drafted) // Will hopefully increase randomness, Donkie
-
+/* Disables drafting for now, if someone has an antag option off they shouldn't have to be forced to play it, might help "Frendly antegs"
 	while(candidates.len < recommended_enemies)				// Pick randomlly just the number of people we need and add them to our list of candidates
 		if(drafted.len > 0)
 			applicant = pick(drafted)
@@ -303,7 +352,7 @@
 
 		else												// Not enough scrubs, ABORT ABORT ABORT
 			break
-
+*/
 	return candidates		// Returns: The number of people who had the antagonist role set to yes, regardless of recomended_enemies, if that number is greater than recommended_enemies
 							//			recommended_enemies if the number of people with that role set to yes is less than recomended_enemies,
 							//			Less if there are not enough valid players in the game entirely to make recommended_enemies.

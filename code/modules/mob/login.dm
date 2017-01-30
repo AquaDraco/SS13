@@ -10,7 +10,7 @@
 			if(!M.key) continue // Skip over mobs that do not have keys
 			if(M.ckey == "@[ckey]") continue // Skip over aghosted bodies
 			if(M == src)	continue
-			if( M.key && (M.key != key) )
+			if(M.key && (M.key != key))
 				var/matches
 				if( (M.lastKnownIP == lastKnownIP) )
 					matches += "IP ([lastKnownIP])"
@@ -39,6 +39,9 @@
 	next_move = 1
 	sight |= SEE_SELF
 
+	if(ckey in deadmins)
+		verbs += /client/proc/readmin
+
 	..()
 
 	if(loc && !isturf(loc))
@@ -52,6 +55,8 @@
 		var/obj/Loc=loc
 		Loc.on_log()
 
+	if(ticker) ticker.stalemate_check() // stalemate check
+
 // Calling update_interface() in /mob/Login() causes the Cyborg to immediately be ghosted; because of winget().
 // Calling it in the overriden Login, such as /mob/living/Login() doesn't cause this.
 /mob/proc/update_interface()
@@ -62,9 +67,11 @@
 			update_normal_mode()
 
 /mob/proc/update_hotkey_mode()
-	winset(src, null, "mainwindow.macro=hotkeymode hotkey_toggle.is-checked=true mapwindow.map.focus=true input.background-color=#F0F0F0")
+	if(client)
+		winset(src, null, "mainwindow.macro=hotkeymode hotkey_toggle.is-checked=true mapwindow.map.focus=true input.background-color=#F0F0F0")
 
 /mob/proc/update_normal_mode()
-	winset(src, null, "mainwindow.macro=macro hotkey_toggle.is-checked=false input.focus=true input.background-color=#D3B5B5")
+	if(client)
+		winset(src, null, "mainwindow.macro=macro hotkey_toggle.is-checked=false input.focus=true input.background-color=#D3B5B5")
 
 

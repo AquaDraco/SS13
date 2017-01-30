@@ -79,14 +79,14 @@ proc/vol_by_throwforce_and_or_w_class(var/obj/item/I)
 /mob/living/proc/IgniteMob()
 	if(fire_stacks > 0 && !on_fire)
 		on_fire = 1
-		src.AddLuminosity(3)
+		set_light(src.light_range + 3)
 		update_fire()
 
 /mob/living/proc/ExtinguishMob()
 	if(on_fire)
 		on_fire = 0
 		fire_stacks = 0
-		src.AddLuminosity(-3)
+		set_light(src.light_range - 3)
 		update_fire()
 
 /mob/living/proc/update_fire()
@@ -102,7 +102,7 @@ proc/vol_by_throwforce_and_or_w_class(var/obj/item/I)
 	if(!on_fire)
 		return 1
 	var/datum/gas_mixture/G = loc.return_air() // Check if we're standing in an oxygenless environment
-	if(G.oxygen < 1)
+	if(G.gasses[OXYGEN] < 1)
 		ExtinguishMob() //If there's no oxygen in the tile we're on, put out the fire
 		return
 	var/turf/location = get_turf(src)

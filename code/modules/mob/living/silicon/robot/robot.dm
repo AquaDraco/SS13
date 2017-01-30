@@ -291,7 +291,7 @@
 /mob/living/silicon/robot/Stat()
 	..()
 	statpanel("Status")
-	if (client.statpanel == "Status")
+	if (client && client.statpanel == "Status")
 		if(emergency_shuttle.online && emergency_shuttle.location < 2)
 			var/timeleft = emergency_shuttle.timeleft()
 			if (timeleft)
@@ -629,7 +629,7 @@
 				for(var/mob/O in viewers(src, null))
 					O.show_message(text("\red <B>[] has slashed at []!</B>", M, src), 1)
 				if(prob(8))
-					flick("noise", flash)
+					flash_eyes(affect_silicon = 1)
 				adjustBruteLoss(damage)
 				updatehealth()
 			else
@@ -702,7 +702,7 @@
 					if ((O.client && !( O.blinded )))
 						O.show_message(text("\red <B>The [M.name] has electrified []!</B>", src), 1)
 
-				flick("noise", flash)
+				flash_eyes(affect_silicon = 1)
 
 				var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
 				s.set_up(5, 1, src)

@@ -413,13 +413,16 @@ Turf and target are seperate in case you want to teleport some distance from a t
 	return .
 
 //Returns a list of all mobs with their name
-/proc/getmobs()
+/proc/getmobs(var/ignore_mindless=0)
 
 	var/list/mobs = sortmobs()
 	var/list/names = list()
 	var/list/creatures = list()
 	var/list/namecounts = list()
 	for(var/mob/M in mobs)
+		if(ignore_mindless)
+			if(!istype(M,/mob/camera/aiEye))
+				if(!M.mind && !istype(M, /mob/dead/observer/)) continue
 		var/name = M.name
 		if (name in names)
 			namecounts[name]++
@@ -940,9 +943,9 @@ atom/proc/GetTypeInAllContents(typepath)
 
 //					var/area/AR = X.loc
 
-//					if(AR.lighting_use_dynamic)							//TODO: rewrite this code so it's not messed by lighting ~Carn
+//					if(AR.dynamic_lighting)							//TODO: rewrite this code so it's not messed by lighting ~Carn
 //						X.opacity = !X.opacity
-//						X.SetOpacity(!X.opacity)
+//						X.set_opacity(!X.opacity)
 
 					toupdate += X
 
@@ -951,9 +954,9 @@ atom/proc/GetTypeInAllContents(typepath)
 
 //						var/area/AR2 = ttl.loc
 
-//						if(AR2.lighting_use_dynamic)						//TODO: rewrite this code so it's not messed by lighting ~Carn
+//						if(AR2.dynamic_lighting)						//TODO: rewrite this code so it's not messed by lighting ~Carn
 //							ttl.opacity = !ttl.opacity
-//							ttl.sd_SetOpacity(!ttl.opacity)
+//							ttl.sd_set_opacity(!ttl.opacity)
 
 						fromupdate += ttl
 
@@ -1106,9 +1109,9 @@ proc/DuplicateObject(obj/original, var/perfectcopy = 0 , var/sameloc = 0)
 
 //					var/area/AR = X.loc
 
-//					if(AR.lighting_use_dynamic)
+//					if(AR.dynamic_lighting)
 //						X.opacity = !X.opacity
-//						X.sd_SetOpacity(!X.opacity)			//TODO: rewrite this code so it's not messed by lighting ~Carn
+//						X.sd_set_opacity(!X.opacity)			//TODO: rewrite this code so it's not messed by lighting ~Carn
 
 					toupdate += X
 
@@ -1304,10 +1307,10 @@ var/list/WALLITEMS = list(
 
 	user << "\blue Results of analysis of \icon[icon] [target]."
 	if(total_moles>0)
-		var/o2_concentration = air_contents.oxygen/total_moles
-		var/n2_concentration = air_contents.nitrogen/total_moles
-		var/co2_concentration = air_contents.carbon_dioxide/total_moles
-		var/plasma_concentration = air_contents.toxins/total_moles
+		var/o2_concentration = air_contents.gasses[OXYGEN]/total_moles
+		var/n2_concentration = air_contents.gasses[NITROGEN]/total_moles
+		var/co2_concentration = air_contents.gasses[CARBONDIOXIDE]/total_moles
+		var/plasma_concentration = air_contents.gasses[PLASMA]/total_moles
 
 		var/unknown_concentration =  1-(o2_concentration+n2_concentration+co2_concentration+plasma_concentration)
 
@@ -1357,6 +1360,10 @@ proc/check_target_facings(mob/living/initator, mob/living/target)
 	target.gender = from.gender
 
 	target.job = from.job
+
+	target.undershirt = from.undershirt
+	target.underwear = from.underwear
+	target.socks = from.socks
 
 	if(copyitems)
 		if(from.w_uniform)
@@ -1466,3 +1473,111 @@ proc/check_target_facings(mob/living/initator, mob/living/target)
 					qdel(I)
 	target.update_icons()
 	target.update_hud()
+
+
+/proc/power_failure()
+	priority_announce("Abnormal activity detected in [station_name()]'s powernet. As a precautionary measure, the station's power will be shut off for an indeterminate duration.", "Critical Power Failure", 'sound/AI/poweroff.ogg')
+	for(var/obj/machinery/power/smes/S in world)
+		if(istype(get_area(S), /area/turret_protected) || S.z != 1)
+			continue
+		S.charge = 0
+		S.output_level = 0
+		S.output_attempt = 0
+		S.update_icon()
+		S.power_change()
+
+	var/list/skipped_areas = list(/area/engine/engineering, /area/turret_protected/ai)
+
+	for(var/area/A in world)
+		if( !A.requires_power || A.always_unpowered )
+			continue
+
+		var/skip = 0
+		for(var/area_type in skipped_areas)
+			if(istype(A,area_type))
+				skip = 1
+				break
+		if(A.contents)
+			for(var/atom/AT in A.contents)
+				if(AT.z != 1) //Only check one, it's enough.
+					skip = 1
+				break
+		if(skip) continue
+		A.power_light = 0
+		A.power_equip = 0
+		A.power_environ = 0
+		A.power_change()
+
+	for(var/obj/machinery/power/apc/C in world)
+		if(C.cell && C.z == 1)
+			var/area/A = get_area(C)
+
+			var/skip = 0
+			for(var/area_type in skipped_areas)
+				if(istype(A,area_type))
+					skip = 1
+					break
+			if(skip) continue
+
+			C.cell.charge = 0
+
+/proc/power_restore()
+
+	priority_announce("Power has been restored to [station_name()]. We apologize for the inconvenience.", "Power Systems Nominal", 'sound/AI/poweron.ogg')
+	for(var/obj/machinery/power/apc/C in world)
+		if(C.cell && C.z == 1)
+			C.cell.charge = C.cell.maxcharge
+	for(var/obj/machinery/power/smes/S in world)
+		if(S.z != 1)
+			continue
+		S.charge = S.capacity
+		S.output_level = S.output_level_max
+		S.output_attempt = 1
+		S.update_icon()
+		S.power_change()
+	for(var/area/A in world)
+		if(!istype(A, /area/space) && !istype(A, /area/shuttle) && !istype(A,/area/arrival))
+			A.power_light = 1
+			A.power_equip = 1
+			A.power_environ = 1
+			A.power_change()
+
+/proc/power_restore_quick(var/no_announce=0,var/limited=0)
+
+	if(!no_announce)
+		priority_announce("All SMESs on [station_name()] have been recharged. We apologize for the inconvenience.", "Power Systems Nominal", 'sound/AI/poweron.ogg')
+	for(var/obj/machinery/power/smes/S in machines)
+		if(S.z != 1)
+			continue
+		if(limited)
+			var/area/A = get_area(S)
+			if(!istype(A,/area/engine/engine_smes))
+				continue
+		S.charge = S.capacity
+		if(limited)
+			S.output_level = S.output_level_max / 2
+		else
+			S.output_level = S.output_level_max
+		S.output_attempt = 1
+		S.update_icon()
+		S.power_change()
+
+/var/mob/dview/dview_mob = new
+
+//Version of view() which ignores darkness, because BYOND doesn't have it (I actually suggested it but it was tagged redundant, BUT HEARERS IS A T- /rant).
+/proc/dview(var/range = world.view, var/center, var/invis_flags = 0)
+	if(!center)
+		return
+
+	dview_mob.loc = center
+
+	dview_mob.see_invisible = invis_flags
+
+	. = view(range, dview_mob)
+	dview_mob.loc = null
+
+/mob/dview
+	invisibility = 101
+	density = 0
+	see_in_dark = 1e6
+	anchored = 1

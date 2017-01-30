@@ -143,8 +143,29 @@ var/list/department_radio_keys = list(
 		if(prob(50))
 			message_mode = "headset"
 
-	if (stuttering)
-		message = stutter(message)
+	//reagent speech
+	var/reagent_spoke = 0
+	if (istype(src,/mob/living/carbon/human))
+		if (!istype(src:wear_mask,/obj/item/clothing/mask/gas/voice)) //prevents perseus who stimmed from talking like bafoons
+			var/datum/reagents/H = src:reagents
+			var/datum/reagent/chosen_reagent
+			for(var/datum/reagent/R in H.reagent_list)
+				if(R.on_mob_speech() == 0)
+					continue //reagents without on_mob_speech() should not be considered
+				if(!chosen_reagent)
+					chosen_reagent = R
+				if(chosen_reagent.volume < R)
+					chosen_reagent = R
+			if(chosen_reagent && message)
+				message = chosen_reagent.on_mob_speech(message)
+				reagent_spoke = 1
+
+	if(!reagent_spoke)
+		if (stuttering)
+			message = stutter(message)
+
+		if (slurring)
+			message = slur(message)
 
 /* //qw do not have beesease atm.
 	if(virus)
@@ -236,7 +257,7 @@ var/list/department_radio_keys = list(
 
 		if("changeling")
 			if(mind && mind.changeling)
-				log_say("[mind.changeling.changelingID]/[src.key] : [message]")
+				if(key) log_say("[mind.changeling.changelingID]/[src.key] : [message]")
 				for(var/mob/Changeling in mob_list)
 					if((Changeling.mind && Changeling.mind.changeling) || istype(Changeling, /mob/dead/observer))
 						Changeling << "<i><font color=#800080><b>[mind.changeling.changelingID]:</b> [message]</font></i>"
@@ -340,7 +361,12 @@ var/list/department_radio_keys = list(
 
 	for (var/M in listening)
 		if(hascall(M,"say_understands"))
-			if (M:say_understands(src))
+			if(istype(M,/mob/living/simple_animal/borer))
+				var/mob/living/simple_animal/borer/B = M
+				if(!B.host && !B.hear_augment)
+					continue
+
+			if(M:say_understands(src))
 				heard_a += M
 			else
 				heard_b += M
@@ -392,7 +418,7 @@ var/list/department_radio_keys = list(
 	spawn(0)
 		flick_overlay(image('icons/mob/talk.dmi', src, "h[bubble_type][say_test(message)]",MOB_LAYER+1), speech_bubble_recipients, 30)
 
-	log_say("[name]/[key] : [message]")
+	if(key) log_say("[name]/[key] : [message]")
 
 /mob/living/proc/GetVoice()
 	return name

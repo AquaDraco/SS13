@@ -124,8 +124,8 @@
 	cabin_air = new
 	cabin_air.temperature = T20C
 	cabin_air.volume = 200
-	cabin_air.oxygen = O2STANDARD*cabin_air.volume/(R_IDEAL_GAS_EQUATION*cabin_air.temperature)
-	cabin_air.nitrogen = N2STANDARD*cabin_air.volume/(R_IDEAL_GAS_EQUATION*cabin_air.temperature)
+	cabin_air.gasses[OXYGEN] = O2STANDARD*cabin_air.volume/(R_IDEAL_GAS_EQUATION*cabin_air.temperature)
+	cabin_air.gasses[NITROGEN] = N2STANDARD*cabin_air.volume/(R_IDEAL_GAS_EQUATION*cabin_air.temperature)
 	return cabin_air
 
 /obj/mecha/proc/add_radio()
@@ -941,8 +941,8 @@
 	if(usr != occupant)	return
 
 	lights = !lights
-	if(lights)	AddLuminosity(lights_power)
-	else		AddLuminosity(-lights_power)
+	if(lights)	set_light(lights_power)
+	else		set_light(0)
 	src.occupant_message("Toggled lights [lights?"on":"off"].")
 	log_message("Toggled lights [lights?"on":"off"].")
 	return
@@ -1705,6 +1705,8 @@ var/year_integer = text2num(year) // = 2013???
 	delay = 20
 
 	process(var/obj/mecha/mecha)
+		if(!mecha || mecha.gc_destroyed)
+			return stop() //sanity
 		if(mecha.cabin_air && mecha.cabin_air.return_volume() > 0)
 			var/delta = mecha.cabin_air.temperature - T20C
 			mecha.cabin_air.temperature -= max(-10, min(10, round(delta/4,0.1)))
@@ -1714,6 +1716,8 @@ var/year_integer = text2num(year) // = 2013???
 	delay = 15
 
 	process(var/obj/mecha/mecha)
+		if(!mecha || mecha.gc_destroyed)
+			return stop() //sanity
 		if(mecha.internal_tank)
 			var/datum/gas_mixture/tank_air = mecha.internal_tank.return_air()
 			var/datum/gas_mixture/cabin_air = mecha.cabin_air
@@ -1747,6 +1751,8 @@ var/year_integer = text2num(year) // = 2013???
 	delay = 7
 
 	process(var/obj/mecha/mecha as obj,direction)
+		if(!mecha || mecha.gc_destroyed)
+			return stop() //sanity
 		if(direction)
 			if(!step(mecha, direction)||mecha.check_for_support())
 				src.stop()
@@ -1757,6 +1763,8 @@ var/year_integer = text2num(year) // = 2013???
 /datum/global_iterator/mecha_internal_damage // processing internal damage
 
 	process(var/obj/mecha/mecha)
+		if(!mecha || mecha.gc_destroyed)
+			return stop() //sanity
 		if(!mecha.hasInternalDamage())
 			return stop()
 		if(mecha.hasInternalDamage(MECHA_INT_FIRE))

@@ -22,11 +22,13 @@
 	var/ending = copytext(text, length(text))
 
 	if (ending == "?")
-		return "queries, \"[text]\"";
+		return "queries, \"<span class = 'robot'>[text]</span>\"";
+	else if (copytext(text, length(text) - 1) == "!!")
+		return "yells, \"<span class = 'yell'><span class = 'robot'>[text]</span></span>\""
 	else if (ending == "!")
-		return "declares, \"[text]\"";
+		return "declares, \"<span class = 'robot'>[text]</span>\"";
 
-	return "states, \"[text]\"";
+	return "states, \"<span class = 'robot'>[text]</span>\"";
 
 /mob/living/silicon/ai/IsVocal()
 	return !config.silent_ai
@@ -87,7 +89,7 @@ var/const/VOX_DELAY = 600
 		src << "<span class='notice'>Wireless interface disabled, unable to interact with announcement PA.</span>"
 		return
 
-	var/list/words = text2list(trim(message), " ")
+	var/list/words = splittext(trim(message), " ")
 	var/list/incorrect_words = list()
 
 	if(words.len > 30)

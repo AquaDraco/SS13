@@ -155,6 +155,20 @@ var/next_external_rsc = 0
 		winset(src, "rpane.changelog", "background-color=#eaeaea;font-style=bold")
 
 
+/client/proc/proxycheck()
+	var/list/httpstuff = world.Export("http://check.getipintel.net/check.php?ip=[address]&contact=[config.getipintel_email]&flags=b")
+	if(!httpstuff)
+		return -50 //error code
+	var/n = httpstuff["CONTENT"]
+	var/httpcode = httpstuff["STATUS"]
+	if(httpcode == 429)
+		return -7 // exceeded number of queries
+	if(httpcode != 200)//something went wrong
+		return -httpcode
+	if(n)
+		n = file2text(n)
+	return n
+
 	//////////////
 	//DISCONNECT//
 	//////////////
@@ -166,7 +180,7 @@ var/next_external_rsc = 0
 	clients -= src
 	return ..()
 
-
+var/list/bad_ips = list() //prevent users already checked by the system from spamming the service (getipintel)
 
 /client/proc/log_client_to_db()
 
@@ -187,6 +201,57 @@ var/next_external_rsc = 0
 		player_age = text2num(query.item[2])
 		break
 
+	if(player_age == "--")
+		player_age = 0
+		var/danger
+		if(config.getipintel) // GetIpIntel's enabled
+			if(address in bad_ips) //prevent users already checked by the system from spamming the service (getipintel)
+				log_access("Failed Login: [key] - New account attempting to connect with a proxy([danger*100]% possibility to be a proxy.)")
+				message_admins("Failed Login: [key] - with a proxy([danger*100]% possibility to be a proxy.</span>")
+				src << "Sorry but you're not allowed to connect to the server through a proxy. Disable it and reconnect if you want to play."
+				if(config.banappeals)
+					src << "If you feel this is in error, head to [config.banappeals]"
+				del(src)
+				return 0
+			danger = proxycheck()
+			if(danger >= config.getipintel_limit)
+				log_access("Failed Login: [key] - New account attempting to connect with a proxy([danger*100]% possibility to be a proxy.)")
+				message_admins("Failed Login: [key] - with a proxy([danger*100]% possibility to be a proxy.</span>")
+				src << "Sorry but you're not allowed to connect to the server through a proxy. Disable it and reconnect if you want to play."
+				if(config.banappeals)
+					src << "If you feel this is in error, head to [config.banappeals]"
+				bad_ips += address
+				del(src)
+				return 0
+			else if(danger < 0) // means an issue popped up
+				switch(danger)
+					if(-1)
+						message_admins("GetIpIntel Error: [key] - error code -1, IP-less client. ( [address] )")
+						log_access("GetIpIntel Error: [key] - GetIpIntel errror code -1, IP-less client ( [address] )")
+					if(-2)
+						message_admins("GetIpIntel Error: [key] - error code -2, IP invalid. ( [address] )")
+						log_access("GetIpIntel Error: [key] - errror code -2, IP invalid ( [address] )")
+					if(-3)
+						message_admins("GetIpIntel Error: [key] - error code -3, private address detected. ( [address] )")
+						log_access("GetIpIntel Error: [key] - errror code -3, private address detected. ( [address] )")
+					if(-4)
+						message_admins("GetIpIntel Error: [key] - error code -4, Proxy Checker not working")
+						log_access("GetIpIntel Error: [key] - errror code -4, ProxyChecker not working")
+					if(-5)
+						message_admins("GetIpIntel Error: [key] - error code -5, Proxy Checker stopped working! Server banned from the system. Fix immediately")
+						log_access("GetIpIntel Error: [key] - errror code -5, ProxyChecker stopped working! Server banned from the system. Fix immediately")
+					if(-6)
+						message_admins("GetIpIntel Error: [key] - error code -6, Proxy Checker stopped working! GETIPCHECKEMAIL config option is invalid. Fix immediately")
+						log_access("GetIpIntel Error: [key] - errror code -6, ProxyChecker stopped working! GETIPCHECKEMAIL config option is invalid. Fix immediately")
+					if(-7)
+						message_admins("GetIpIntel Error: [key] - error code -7, Proxy Checker stopped working! Number of queries possible per minute exceeded")
+						log_access("GetIpIntel Error: [key] - errror code -7, ProxyChecker stopped working! Server banned from the system. Number of queries possible per minute exceeded")
+					else
+						message_admins("GetIpIntel Error: [key] - error code -8, Proxy Checker stopped working! HTTP error code [danger]")
+						log_access("GetIpIntel Error: [key] - errror code -8, ProxyChecker stopped working! HTTP error code [danger]")
+		message_admins("[key_name(src)] is connecting here for the first time. [danger>0 ? "Proxy chance: [danger*100]%" : ""]")
+		log_access("[key_name(src)] is connecting here for the first time. [danger>0 ? "Proxy chance: [danger*100]%" : ""]")
+
 	var/DBQuery/query_ip = dbcon.NewQuery("SELECT ckey FROM erro_player WHERE ip = '[address]'")
 	query_ip.Execute()
 	related_accounts_ip = list()
@@ -202,7 +267,7 @@ var/next_external_rsc = 0
 			related_accounts_cid.Add("[query_cid.item[1]]")
 	//Log all the alts
 	if(related_accounts_cid.len)
-		log_access("Alts: [key_name(src)]:[list2text(related_accounts_cid, " - ")]")
+		log_access("Alts: [key_name(src)]:[jointext(related_accounts_cid, " - ")]")
 
 	//Just the standard check to see if it's actually a number
 	if(sql_id)
@@ -245,6 +310,15 @@ var/next_external_rsc = 0
 	if(inactivity > duration)	return inactivity
 	return 0
 
+
+// Byond seemingly calls stat, each tick.
+// Calling things each tick can get expensive real quick.
+// So we slow this down a little.
+// See: http://www.byond.com/docs/ref/info.html#/client/proc/Stat
+/client/Stat()
+	. = ..()
+	sleep(1)
+
 //send resources to the client. It's here in its own proc so we can move it around easiliy if need be
 /client/proc/send_resources()
 	getFiles(
@@ -269,30 +343,6 @@ var/next_external_rsc = 0
 		'html/browser/common.css',
 		'html/browser/scannernew.css',
 		'html/browser/playeroptions.css',
-		'icons/pda_icons/pda_atmos.png',
-		'icons/pda_icons/pda_back.png',
-		'icons/pda_icons/pda_bell.png',
-		'icons/pda_icons/pda_blank.png',
-		'icons/pda_icons/pda_boom.png',
-		'icons/pda_icons/pda_bucket.png',
-		'icons/pda_icons/pda_crate.png',
-		'icons/pda_icons/pda_cuffs.png',
-		'icons/pda_icons/pda_eject.png',
-		'icons/pda_icons/pda_exit.png',
-		'icons/pda_icons/pda_flashlight.png',
-		'icons/pda_icons/pda_honk.png',
-		'icons/pda_icons/pda_mail.png',
-		'icons/pda_icons/pda_medical.png',
-		'icons/pda_icons/pda_menu.png',
-		'icons/pda_icons/pda_mule.png',
-		'icons/pda_icons/pda_notes.png',
-		'icons/pda_icons/pda_power.png',
-		'icons/pda_icons/pda_rdoor.png',
-		'icons/pda_icons/pda_reagent.png',
-		'icons/pda_icons/pda_refresh.png',
-		'icons/pda_icons/pda_scanner.png',
-		'icons/pda_icons/pda_signaler.png',
-		'icons/pda_icons/pda_status.png',
 		'icons/spideros_icons/sos_1.png',
 		'icons/spideros_icons/sos_2.png',
 		'icons/spideros_icons/sos_3.png',
@@ -318,9 +368,4 @@ var/next_external_rsc = 0
 		'icons/stamp_icons/large_stamp-cap.png',
 		'icons/stamp_icons/large_stamp-qm.png',
 		'icons/stamp_icons/large_stamp-law.png',
-		'icons/pda_icons/pda_perseus_p.png',
-		'icons/pda_icons/pda_perseus_bd.png',
-		'icons/pda_icons/pda_perseus_i.png',
-		'icons/pda_icons/pda_perseus_c.png',
-		'icons/pda_icons/pda_perseus_m.png'
 		)

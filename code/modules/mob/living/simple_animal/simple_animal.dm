@@ -160,7 +160,8 @@
 	var/atom/A = src.loc
 	if(isturf(A))
 		var/turf/T = A
-		var/areatemp = T.temperature
+		var/datum/gas_mixture/environment = T.return_air()
+		var/areatemp = environment.temperature
 		if( abs(areatemp - bodytemperature) > 40 )
 			var/diff = areatemp - bodytemperature
 			diff = diff / 5
@@ -170,10 +171,10 @@
 		if(istype(T,/turf/simulated))
 			var/turf/simulated/ST = T
 			if(ST.air)
-				var/tox = ST.air.toxins
-				var/oxy = ST.air.oxygen
-				var/n2  = ST.air.nitrogen
-				var/co2 = ST.air.carbon_dioxide
+				var/tox = ST.air.gasses[PLASMA]
+				var/oxy = ST.air.gasses[OXYGEN]
+				var/n2  = ST.air.gasses[NITROGEN]
+				var/co2 = ST.air.gasses[CARBONDIOXIDE]
 
 				if(min_oxy)
 					if(oxy < min_oxy)
@@ -450,7 +451,7 @@
 	..()
 
 	statpanel("Status")
-	stat(null, "Health: [round((health / maxHealth) * 100)]%")
+	stat("Health", "[round((health / maxHealth) * 100)]%")
 
 /mob/living/simple_animal/proc/Die()
 	health = 0 // so /mob/living/simple_animal/Life() doesn't magically revive them

@@ -48,6 +48,7 @@ NOTE: there are two lists of areas in the end of this file: centcom and station 
 	var/area/master				// master area used for power calcluations
 								// (original area before splitting due to sd_DAL)
 	var/list/related			// the other areas of the same type as this
+	var/generated = 0
 //	var/list/lights				// list of all lights on this area
 
 /*Adding a wizard area teleport list because motherfucking lag -- Urist*/
@@ -56,11 +57,12 @@ var/list/teleportlocs = list()
 
 proc/process_teleport_locs()
 	for(var/area/AR in world)
-		if(istype(AR, /area/shuttle) || istype(AR, /area/syndicate_station) || istype(AR, /area/wizard_station)) continue
+		if(istype(AR, /area/shuttle) || istype(AR, /area/syndicate_station) || istype(AR, /area/wizard_station ) || istype(AR, /area/template )) continue
 		if(teleportlocs.Find(AR.name)) continue
 		var/turf/picked = safepick(get_area_turfs(AR.type)) //Changed to safepick to resolve an error that was occuring where it would get asked to pick from an empty list. Runtime errors, man.
 		if(!picked) continue
-		else if (picked.z == 1)
+		if (AR.generated) continue
+		if (picked.z == 1)
 			teleportlocs += AR.name
 			teleportlocs[AR.name] = AR
 
@@ -120,7 +122,7 @@ proc/process_ghost_teleport_locs()
 /area/space
 	requires_power = 1
 	always_unpowered = 1
-	lighting_use_dynamic = 0
+	dynamic_lighting = 0
 	power_light = 0
 	power_equip = 0
 	power_environ = 0
@@ -132,10 +134,10 @@ proc/process_ghost_teleport_locs()
 //place to another. Look at escape shuttle for example.
 //All shuttles show now be under shuttle since we have smooth-wall code.
 
-/area/shuttle //DO NOT TURN THE lighting_use_dynamic STUFF ON FOR SHUTTLES. IT BREAKS THINGS.
+/area/shuttle //DO NOT TURN THE dynamic_lighting STUFF ON FOR SHUTTLES. IT BREAKS THINGS.
 	requires_power = 0
 	luminosity = 1
-	lighting_use_dynamic = 0
+	dynamic_lighting = 0
 	var/push_dir = SOUTH
 	var/destination
 
@@ -296,7 +298,7 @@ proc/process_ghost_teleport_locs()
 	icon_state = "start"
 	requires_power = 0
 	luminosity = 1
-	lighting_use_dynamic = 0
+	dynamic_lighting = 0
 	has_gravity = 1
 
 // === end remove
@@ -368,8 +370,7 @@ proc/process_ghost_teleport_locs()
 
 /area/asteroid/artifactroom/New()
 	..()
-	lighting_use_dynamic = 1
-	InitializeLighting()
+	dynamic_lighting = 1
 
 /area/planet/clown
 	name = "\improper Clown Planet"
@@ -795,7 +796,7 @@ proc/process_ghost_teleport_locs()
 	name = "\improper Holodeck"
 	icon_state = "Holodeck"
 	luminosity = 1
-	lighting_use_dynamic = 0
+	dynamic_lighting = 0
 
 /area/holodeck/alphadeck
 	name = "\improper Holodeck Alpha"
@@ -882,7 +883,7 @@ proc/process_ghost_teleport_locs()
 /area/solar
 	requires_power = 0
 	luminosity = 1
-	lighting_use_dynamic = 0
+	dynamic_lighting = 0
 
 	auxport
 		name = "\improper Fore Port Solar Array"
@@ -1440,25 +1441,25 @@ proc/process_ghost_teleport_locs()
 	name = "\improper AI Sat Ext"
 	icon_state = "storage"
 	luminosity = 1
-	lighting_use_dynamic = 0
+	dynamic_lighting = 0
 
 /area/turret_protected/AIsatextFS
 	name = "\improper AI Sat Ext"
 	icon_state = "storage"
 	luminosity = 1
-	lighting_use_dynamic = 0
+	dynamic_lighting = 0
 
 /area/turret_protected/AIsatextAS
 	name = "\improper AI Sat Ext"
 	icon_state = "storage"
 	luminosity = 1
-	lighting_use_dynamic = 0
+	dynamic_lighting = 0
 
 /area/turret_protected/AIsatextAP
 	name = "\improper AI Sat Ext"
 	icon_state = "storage"
 	luminosity = 1
-	lighting_use_dynamic = 0
+	dynamic_lighting = 0
 
 /area/turret_protected/NewAIMain
 	name = "\improper AI Main New"
@@ -1536,11 +1537,38 @@ proc/process_ghost_teleport_locs()
 	name = "Beach"
 	icon_state = "away"
 	luminosity = 1
-	lighting_use_dynamic = 0
+	dynamic_lighting = 0
 	requires_power = 0
 	has_gravity = 1
 	ambientsounds = list('sound/ambience/shore.ogg', 'sound/ambience/seag1.ogg','sound/ambience/seag2.ogg','sound/ambience/seag2.ogg')
 
+
+//templates
+/area/template/
+	name = "Strange Location"
+	icon_state = "away"
+
+//all
+/area/template/gravity/powered/lit
+	requires_power = 0
+	luminosity = 1
+	dynamic_lighting = 0
+	has_gravity = 1
+
+//variations
+/area/template/gravity
+	has_gravity = 1
+/area/template/gravity/lit
+	luminosity = 1
+	dynamic_lighting = 0
+/area/template/gravity/powered
+	requires_power = 0
+
+/area/template/powered
+	requires_power = 0
+/area/template/powered/lit
+	luminosity = 1
+	dynamic_lighting = 0
 
 /////////////////////////////////////////////////////////////////////
 /*
@@ -1562,6 +1590,51 @@ var/list/centcom_areas = list (
 
 //SPACE STATION 13
 var/list/the_station_areas = list (
+	/area/ai_monitored,
+	/area/assembly,
+	/area/atmos,
+	/area/bridge,
+	/area/chapel,
+	/area/clown,
+	/area/construction,
+	/area/crew_quarters,
+	/area/engine,
+	/area/hallway,
+	/area/hydroponics,
+	/area/janitor,
+	/area/clown,
+	/area/mime,
+	/area/lawoffice,
+	/area/library,
+	/area/maintenance,
+	/area/medical,
+	/area/pod_hangar/crew,
+	/area/pod_hangar/security,
+	/area/quartermaster,
+	/area/security,
+	/area/shuttle/arrival/station,
+	/area/shuttle/escape_pod1/station,
+	/area/shuttle/escape_pod2/station,
+	/area/shuttle/escape_pod3/station,
+	/area/shuttle/escape_pod4/station,
+	/area/shuttle/laborcamp/station,
+	/area/shuttle/mining/station,
+	/area/shuttle/prison/station,
+	/area/storage,
+	/area/tcommsat,
+	/area/teleporter,
+	/area/toxins,
+	/area/turret_protected/ai,
+	/area/turret_protected/ai_upload,
+	/area/turret_protected/aisat_interior
+)
+var/list/the_station_areas_safe = list(
+	/area/turret_protected/ai,
+	/area/turret_protected/ai_upload,
+	/area/engine,
+	/area/atmos, //so events dont happen in the air supply
+	/area/solar,
+	/area/holodeck,
 	/area/shuttle/arrival,
 	/area/shuttle/escape/station,
 	/area/shuttle/escape_pod1/station,
@@ -1570,34 +1643,12 @@ var/list/the_station_areas = list (
 	/area/shuttle/escape_pod4/station,
 	/area/shuttle/mining/station,
 	/area/shuttle/transport1/station,
-//	/area/shuttle/transport2/station,	//not present on map
 	/area/shuttle/specops/station,
-	/area/atmos,
-	/area/maintenance,
-	/area/hallway,
-	/area/bridge,
-	/area/crew_quarters,
-	/area/holodeck,
-//	/area/mint,		//not present on map
-	/area/library,
-	/area/chapel,
-	/area/lawoffice,
-	/area/engine,
-	/area/solar,
-	/area/assembly,
-	/area/teleporter,
-	/area/medical,
-	/area/security,
-	/area/quartermaster,
-	/area/janitor,
-	/area/hydroponics,
-	/area/toxins,
-	/area/storage,
-	/area/construction,
-	/area/ai_monitored/storage/eva, //do not try to simplify to "/area/ai_monitored" --rastaf0
-//	/area/ai_monitored/storage/secure,	//not present on map
-//	/area/ai_monitored/storage/emergency,	//not present on map
-	/area/turret_protected/ai_upload, //do not try to simplify to "/area/turret_protected" --rastaf0
-	/area/turret_protected/ai_upload_foyer,
-	/area/turret_protected/ai,
-)
+	/area/security/perseus/,
+	/area/security/perseus/mycenae_centcom,
+	/area/security/perseus/mycenaeiii)
+
+	//These are needed because /area/engine has to be removed from the list, but we still want these areas to be eligible
+var/list/the_station_areas_danger = list(
+	/area/engine/break_room,
+	/area/engine/chiefs_office)

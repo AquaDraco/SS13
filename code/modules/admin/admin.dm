@@ -160,10 +160,11 @@ var/global/floorIsLava = 0
 		body += "<b>Other actions:</b>"
 		body += "<br>"
 		body += "<A href='?_src_=holder;forcespeech=\ref[M]'>Forcesay</A> | "
+		body += "<A href='?_src_=holder;forcelobby=\ref[M]'>Send to Lobby</A> | "
 		if(M.client.related_accounts_cid.len)
-			body += "<br><br><b>Related accounts by CID:</b> [list2text(M.client.related_accounts_cid, " - ")]<br>"
+			body += "<br><br><b>Related accounts by CID:</b> [jointext(M.client.related_accounts_cid, " - ")]<br>"
 		if(M.client.related_accounts_ip.len)
-			body += "<b>Related accounts by IP:</b> [list2text(M.client.related_accounts_ip, " - ")]<br>"
+			body += "<b>Related accounts by IP:</b> [jointext(M.client.related_accounts_ip, " - ")]<br>"
 
 	body += "<br>"
 	body += "</body></html>"
@@ -375,8 +376,6 @@ var/global/floorIsLava = 0
 	usr << browse(dat, "window=admincaster_main;size=400x600")
 	onclose(usr, "admincaster_main")
 
-
-
 /datum/admins/proc/Jobbans()
 	if(!check_rights(R_BAN))	return
 
@@ -386,6 +385,16 @@ var/global/floorIsLava = 0
 		if( findtext(r,"##") )
 			r = copytext( r, 1, findtext(r,"##") )//removes the description
 		dat += text("<tr><td>[t] (<A href='?src=\ref[src];removejobban=[r]'>unban</A>)</td></tr>")
+	dat += "</table>"
+	usr << browse(dat, "window=ban;size=400x400")
+
+/datum/admins/proc/OOCbans()
+	if(!check_rights(R_BAN))	return
+
+	var/dat = "<B>OOC Bans!</B><HR><table>"
+	for(var/t in ooc_keylist)
+		var/r = ooc_keylist[t]
+		dat += text("<tr><td>[t] [r ? "- [r]" : ""] (<A href='?src=\ref[src];removeoocban=[t]'>unban</A>)</td></tr>")
 	dat += "</table>"
 	usr << browse(dat, "window=ban;size=400x400")
 
@@ -422,7 +431,7 @@ var/global/floorIsLava = 0
 			<A href='?src=\ref[src];secretsgeneral=spawn_objects'>Admin Log</A><BR>
 			<A href='?src=\ref[src];secretsgeneral=show_admins'>Show Admin List</A><BR>
 			<A href='?src=\ref[src];secretsgeneral=crime_logs'>Show Crime Logs</A><BR>
-			<A href='?src=\ref[src];secretsgeneral=timeline_logs'>Show Round Timeline</A><BR>
+			<A href='?src=\ref[src];secretsgeneral=event_logs'>Show Event Logs</A><BR>
 			<BR>
 			"}
 
@@ -439,7 +448,7 @@ var/global/floorIsLava = 0
 			<A href='?src=\ref[src];secretsadmin=showgm'>Show Game Mode</A><BR>
 			<A href='?src=\ref[src];secretsadmin=manifest'>Show Crew Manifest</A><BR>
 			<A href='?src=\ref[src];secretsadmin=DNA'>List DNA (Blood)</A><BR>
-			<A href='?src=\ref[src];secretsadmin=fingerprints'>List Fingerprints</A><BR><BR>
+			<A href='?src=\ref[src];secretsadmin=fingerprints'>List Fingerprints</A><BR>
 			<BR>
 			<B>Shuttles</B><BR>
 			<BR>

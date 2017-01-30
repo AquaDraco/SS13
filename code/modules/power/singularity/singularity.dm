@@ -2,7 +2,8 @@
 
 var/global/list/uneatable = list(
 	/turf/space,
-	/obj/effect/overlay
+	/obj/effect/overlay,
+	/atom/movable/lighting_overlay
 	)
 
 /obj/machinery/singularity
@@ -212,7 +213,8 @@ var/global/list/uneatable = list(
 //	if(defer_powernet_rebuild != 2)
 //		defer_powernet_rebuild = 1
 	// Let's just make this one loop.
-	for(var/atom/X in orange(grav_pull,src))
+	var/list/L = orange(grav_pull,src)
+	for(var/atom/X in L)
 		var/dist = get_dist(X, src)
 		// Movable atoms only
 		if(dist > consume_range && istype(X, /atom/movable))

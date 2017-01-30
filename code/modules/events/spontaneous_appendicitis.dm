@@ -1,32 +1,13 @@
-/datum/round_event_control/spontaneous_appendicitis
+/datum/round_event_control/disease_outbreak/spontaneous_appendicitis
 	name = "Spontaneous Appendicitis"
-	typepath = /datum/round_event/spontaneous_appendicitis
-	phases_required = 0
+	typepath = /datum/round_event/disease_outbreak/spontaneous_appendicitis
+	event_flags = EVENT_STANDARD
+	weight = 20
 	max_occurrences = 4
-	rating = list(
-				"Gameplay"	= 65,
-				"Dangerous"	= 30
-				)
+	earliest_start = 6000
 
-/datum/round_event/spontaneous_appendicitis
-	var/mob/living/carbon/sucker = null //the mob which is affected by disease.
+/datum/round_event/disease_outbreak/spontaneous_appendicitis
+	possible_viruses = list(/datum/disease/appendicitis)
 
-/datum/round_event/spontaneous_appendicitis/start()
-	for(var/mob/living/carbon/human/H in shuffle(living_mob_list))
-		var/foundAlready = 0	//don't infect someone that already has the virus
-		for(var/datum/disease/D in H.viruses)
-			foundAlready = 1
-		if(H.stat == 2 || foundAlready)
-			continue
-
-		var/datum/disease/D = new /datum/disease/appendicitis
-		D.holder = H
-		D.affected_mob = H
-		sucker = H
-		H.viruses += D
-		break
-
-/datum/round_event/spontaneous_appendicitis/declare_completion()
-	if(sucker)
-		for(var/datum/disease/appendicitis/A in sucker.viruses)
-			return "<b>Spontaneous Appendicitis:</b> <font color='red'>[sucker.real_name] was not cured of their appendicitis</font>"
+	Alert()
+		return

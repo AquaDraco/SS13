@@ -70,6 +70,9 @@ datum
 				holder.remove_reagent(src.id, REAGENTS_METABOLISM) //By default it slowly disappears.
 				return
 
+			on_mob_speech(var/speech)
+				return 0
+
 			on_move(var/mob/M)
 				return
 
@@ -290,8 +293,8 @@ datum
 				data++
 				M.jitteriness = max(M.jitteriness-5,0)
 				if(data >= 30)		// 12 units, 54 seconds @ metabolism 0.4 units & tick rate 1.8 sec
-					if (!M.stuttering) M.stuttering = 1
-					M.stuttering += 4
+					if (!M.slurring) M.slurring = 1
+					M.slurring += 4
 					M.Dizzy(5)
 					if(iscultist(M) && prob(5))
 						M.say(pick("Av'te Nar'sie","Pa'lid Mors","INO INO ORA ANA","SAT ANA!","Daim'niodeis Arc'iai Le'eones","Egkau'haom'nai en Chaous","Ho Diak'nos tou Ap'iron","R'ge Na'sie","Diabo us Vo'iscum","Si gn'um Co'nu"))
@@ -302,7 +305,7 @@ datum
 						ticker.mode.remove_cultist(M.mind)
 						holder.remove_reagent(src.id, src.volume)	// maybe this is a little too perfect and a max() cap on the statuses would be better??
 						M.jitteriness = 0
-						M.stuttering = 0
+						M.slurring = 0
 						M.confused = 0
 				holder.remove_reagent(src.id, 0.4)	//fixed consumption to prevent balancing going out of whack
 				return
@@ -421,6 +424,11 @@ datum
 				if(prob(7)) M.emote(pick("twitch","drool","moan","giggle"))
 				holder.remove_reagent(src.id, 0.5 * REAGENTS_METABOLISM)
 				return
+
+			on_mob_speech(var/speech)
+				if(!speech)
+					return null
+				return sedated(speech)
 
 		serotrotium
 			name = "Serotrotium"
@@ -902,6 +910,11 @@ datum
 				..()
 				return
 
+			on_mob_speech(var/speech)
+				if(!speech)
+					return null
+				return stutter(speech)
+
 		kelotane
 			name = "Kelotane"
 			id = "kelotane"
@@ -1028,6 +1041,7 @@ datum
 				M.dizziness = 0
 				M.drowsyness = 0
 				M.stuttering = 0
+				M.slurring = 0
 				M.confused = 0
 				M.sleeping = 0
 				M.jitteriness = 0
@@ -1320,7 +1334,7 @@ datum
 				if(!M) M = holder.my_atom
 				M.dizziness = 0
 				M.drowsyness = 0
-				M.stuttering = 0
+				M.slurring = 0
 				M.confused = 0
 				M.reagents.remove_all_type(/datum/reagent/ethanol, 1*REM, 0, 1)
 				..()
@@ -1525,6 +1539,11 @@ datum
 				..()
 				return
 
+			on_mob_speech(var/speech)
+				if(!speech)
+					return null
+				return stutter(speech)
+
 		toxin/plantbgone
 			name = "Plant-B-Gone"
 			id = "plantbgone"
@@ -1608,6 +1627,10 @@ datum
 				..()
 				return
 
+			on_mob_speech(var/speech)
+				if(!speech)
+					return null
+				return sedated(speech)
 
 		toxin/spore
 			name = "Spore Toxin"
@@ -2793,8 +2816,8 @@ datum
 				M.druggy = max(M.druggy, 50)
 				M.confused = max(M.confused+2,0)
 				M.Dizzy(10)
-				if (!M.stuttering) M.stuttering = 1
-				M.stuttering += 3
+				if (!M.slurring) M.slurring = 1
+				M.slurring += 3
 				if(!data) data = 1
 				data++
 				switch(data)
@@ -2818,8 +2841,8 @@ datum
 				data++
 				M.dizziness +=6
 				if(data >= 15 && data <45)
-					if (!M.stuttering) M.stuttering = 1
-					M.stuttering += 3
+					if (!M.slurring) M.slurring = 1
+					M.slurring += 3
 				else if(data >= 45 && prob(50) && data <55)
 					M.confused = max(M.confused+3,0)
 				else if(data >=55)
@@ -2843,8 +2866,8 @@ datum
 				data++
 				M.dizziness +=6
 				if(data >= 15 && data <45)
-					if (!M.stuttering) M.stuttering = 1
-					M.stuttering += 3
+					if (!M.slurring) M.slurring = 1
+					M.slurring += 3
 				else if(data >= 45 && prob(50) && data <55)
 					M.confused = max(M.confused+3,0)
 				else if(data >=55)
@@ -2868,23 +2891,23 @@ datum
 				data++
 				switch(data)
 					if(1 to 5)
-						if (!M.stuttering) M.stuttering = 1
+						if (!M.slurring) M.slurring = 1
 						M.Dizzy(10)
 						if(prob(10)) M.emote(pick("twitch","giggle"))
 					if(5 to 10)
-						if (!M.stuttering) M.stuttering = 1
+						if (!M.slurring) M.slurring = 1
 						M.Jitter(20)
 						M.Dizzy(20)
 						M.druggy = max(M.druggy, 45)
 						if(prob(20)) M.emote(pick("twitch","giggle"))
 					if (10 to 200)
-						if (!M.stuttering) M.stuttering = 1
+						if (!M.slurring) M.slurring = 1
 						M.Jitter(40)
 						M.Dizzy(40)
 						M.druggy = max(M.druggy, 60)
 						if(prob(30)) M.emote(pick("twitch","giggle"))
 					if(200 to INFINITY)
-						if (!M.stuttering) M.stuttering = 1
+						if (!M.slurring) M.slurring = 1
 						M.Jitter(60)
 						M.Dizzy(60)
 						M.druggy = max(M.druggy, 75)
@@ -2915,8 +2938,8 @@ datum
 				data++
 				M.jitteriness = max(M.jitteriness-5,0)
 				if(data >= boozepwr)
-					if (!M.stuttering) M.stuttering = 1
-					M.stuttering += 4
+					if (!M.slurring) M.slurring = 1
+					M.slurring += 4
 					M.Dizzy(5)
 				if(data >= boozepwr*2.5 && prob(33))
 					if (!M.confused) M.confused = 1
@@ -3083,8 +3106,8 @@ datum
 					if(iscultist(M) && prob(5))
 						M.say(pick("Av'te Nar'sie","Pa'lid Mors","INO INO ORA ANA","SAT ANA!","Daim'niodeis Arc'iai Le'eones","Egkau'haom'nai en Chaous","Ho Diak'nos tou Ap'iron","R'ge Na'sie","Diabo us Vo'iscum","Si gn'um Co'nu"))
 				if(data >= boozepwr)
-					if (!M.stuttering) M.stuttering = 1
-					M.stuttering += 4
+					if (!M.slurring) M.slurring = 1
+					M.slurring += 4
 					M.Dizzy(5)
 				if(data >= boozepwr*2.5 && prob(33))
 					if (!M.confused) M.confused = 1
@@ -3094,7 +3117,7 @@ datum
 						ticker.mode.remove_cultist(M.mind)
 						holder.remove_reagent(src.id, src.volume)
 						M.jitteriness = 0
-						M.stuttering = 0
+						M.slurring = 0
 						M.confused = 0
 				holder.remove_reagent(src.id, 0.4)
 				if(data >= boozepwr*10 && prob(33))

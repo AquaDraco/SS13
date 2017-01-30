@@ -24,10 +24,6 @@
 #define TINT_IMPAIR 2			//Threshold of tint level to apply weld mask overlay
 #define TINT_BLIND 3			//Threshold of tint level to obscure vision fully
 
-#define BLOODLOSS_DEFAULT		145
-#define BLOODLOSS_SAFE			100
-#define BLOODLOSS_CRIT			0
-
 /mob/living/carbon/human
 	var/oxygen_alert = 0
 	var/toxins_alert = 0
@@ -145,7 +141,7 @@
 				emote("cough")
 		if (disabilities & TOURETTES)
 			if ((prob(10) && paralysis <= 1))
-				Stun(10)
+				Stun(2)
 				switch(rand(1, 3))
 					if(1)
 						emote("twitch")
@@ -162,9 +158,9 @@
 			if (prob(3))
 				switch(pick(1,2,3))
 					if(1)
-						say(pick("IM A PONY NEEEEEEIIIIIIIIIGH", "without oxigen blob don't evoluate?", "CAPTAINS A COMDOM", "[pick("", "that faggot traitor")] [pick("joerge", "george", "gorge", "gdoruge")] [pick("mellens", "melons", "mwrlins")] is grifing me HAL;P!!!", "can u give me [pick("telikesis","halk","eppilapse")]?", "THe saiyans screwed", "Bi is THE BEST OF BOTH WORLDS>", "I WANNA PET TEH monkeyS", "stop grifing me!!!!", "SOTP IT#"))
+						say(pick("It's a series of tubes!","Persus halp!!","HELP H-HELP! I'M B-BEING REPRESSED!","put uh donk on et","SOOn TM","I WANNA PET TEH monkeyS","can u give me [pick("telikesis","halk","eppilapse")]?","i want [pick("all aces","capton id","pew pew")]?","luv can bloooom","without oxigen blob don't evoluate?","Nanotransen!","SWAY N CIRCUMGYRATE"))
 					if(2)
-						say(pick("FUS RO DAH","fucking 4rries!", "stat me", ">my face", "roll it easy!", "waaaaaagh!!!", "red wonz go fasta", "FOR TEH EMPRAH", "lol2cat", "dem dwarfs man, dem dwarfs", "SPESS MAHREENS", "hwee did eet fhor khayosss", "lifelike texture ;_;", "luv can bloooom", "PACKETS!!!"))
+						say(pick("WE LOOSE!!","BI, tHE bEST OF bOTH WORLDS!!","captain is comdom","SOTP IT!!","roll it easy!","waaaaaagh","sELFIE!!","PACKETS!!!","can yu deepfry this?","wots a weemen?","this is just like one of my japanese animes!!","wANNA pLAY A gAME??","LOCATION!?!"))
 					if(3)
 						emote("drool")
 
@@ -317,6 +313,11 @@
 		if((status_flags & GODMODE))
 			return
 
+		if(istype(src,/mob/living/carbon/human/npc))
+			var/mob/living/carbon/human/npc/NPC = src
+			if(NPC.breath_check())
+				return
+
 		if(!breath || (breath.total_moles() == 0) || suiciding)
 			if(reagents.has_reagent("inaprovaline"))
 				return
@@ -346,11 +347,11 @@
 		var/breath_pressure = (breath.total_moles()*R_IDEAL_GAS_EQUATION*breath.temperature)/BREATH_VOLUME
 
 		//Partial pressure of the O2 in our breath
-		var/O2_pp = (breath.oxygen/breath.total_moles())*breath_pressure
+		var/O2_pp = (breath.gasses[OXYGEN]/breath.total_moles())*breath_pressure
 		// Same, but for the toxins
-		var/Toxins_pp = (breath.toxins/breath.total_moles())*breath_pressure
+		var/Toxins_pp = (breath.gasses[PLASMA]/breath.total_moles())*breath_pressure
 		// And CO2, lets say a PP of more than 10 will be bad (It's a little less really, but eh, being passed out all round aint no fun)
-		var/CO2_pp = (breath.carbon_dioxide/breath.total_moles())*breath_pressure // Tweaking to fit the hacky bullshit I've done with atmo -- TLE
+		var/CO2_pp = (breath.gasses[CARBONDIOXIDE]/breath.total_moles())*breath_pressure // Tweaking to fit the hacky bullshit I've done with atmo -- TLE
 		//var/CO2_pp = (breath.carbon_dioxide/breath.total_moles())*0.5 // The default pressure value
 
 		if(O2_pp < safe_oxygen_min) 			// Too little oxygen
@@ -360,7 +361,7 @@
 				var/ratio = safe_oxygen_min/O2_pp
 				adjustOxyLoss(min(5*ratio, HUMAN_MAX_OXYLOSS)) // Don't fuck them up too fast (space only does HUMAN_MAX_OXYLOSS after all!)
 				failed_last_breath = 1
-				oxygen_used = breath.oxygen*ratio/6
+				oxygen_used = breath.gasses[OXYGEN]*ratio/6
 			else
 				adjustOxyLoss(HUMAN_MAX_OXYLOSS)
 				failed_last_breath = 1
@@ -369,16 +370,16 @@
 			spawn(0) emote("cough")
 			var/ratio = O2_pp/safe_oxygen_max
 			oxyloss += 5*ratio
-			oxygen_used = breath.oxygen*ratio/6
+			oxygen_used = breath.gasses[OXYGEN]*ratio/6
 			oxygen_alert = max(oxygen_alert, 1)*/
 		else								// We're in safe limits
 			failed_last_breath = 0
 			adjustOxyLoss(-5)
-			oxygen_used = breath.oxygen/6
+			oxygen_used = breath.gasses[OXYGEN]/6
 			oxygen_alert = 0
 
-		breath.oxygen -= oxygen_used
-		breath.carbon_dioxide += oxygen_used
+		breath.add_gas(OXYGEN, -1 * oxygen_used)
+		breath.add_gas(CARBONDIOXIDE, oxygen_used)
 
 		//CO2 does not affect failed_last_breath. So if there was enough oxygen in the air but too much co2, this will hurt you, but only once per 4 ticks, instead of once per tick.
 		if(CO2_pp > safe_co2_max)
@@ -396,7 +397,7 @@
 			co2overloadtime = 0
 
 		if(Toxins_pp > safe_toxins_max) // Too much toxins
-			var/ratio = (breath.toxins/safe_toxins_max) * 10
+			var/ratio = (breath.gasses[PLASMA]/safe_toxins_max) * 10
 			//adjustToxLoss(Clamp(ratio, MIN_PLASMA_DAMAGE, MAX_PLASMA_DAMAGE))	//Limit amount of damage toxin exposure can do per second
 			if(reagents)
 				reagents.add_reagent("plasma", Clamp(ratio, MIN_PLASMA_DAMAGE, MAX_PLASMA_DAMAGE))
@@ -404,16 +405,16 @@
 		else
 			toxins_alert = 0
 
-		if(breath.trace_gases.len)	// If there's some other shit in the air lets deal with it here.
-			for(var/datum/gas/sleeping_agent/SA in breath.trace_gases)
-				var/SA_pp = (SA.moles/breath.total_moles())*breath_pressure
-				if(SA_pp > SA_para_min) // Enough to make us paralysed for a bit
-					Paralyse(3) // 3 gives them one second to wake up and run away a bit!
-					if(SA_pp > SA_sleep_min) // Enough to make us sleep as well
-						sleeping = max(sleeping+2, 10)
-				else if(SA_pp > 0.01)	// There is sleeping gas in their lungs, but only a little, so give them a bit of a warning
-					if(prob(20))
-						spawn(0) emote(pick("giggle", "laugh"))
+
+		if(breath.gasses[NITROUS])	// Nitrous Oxide handling
+			var/SA_pp = (breath.gasses[NITROUS]/breath.total_moles())*breath_pressure
+			if(SA_pp > SA_para_min) // Enough to make us paralysed for a bit
+				Paralyse(3) // 3 gives them one second to wake up and run away a bit!
+				if(SA_pp > SA_sleep_min) // Enough to make us sleep as well
+					sleeping = max(sleeping+2, 10)
+			else if(SA_pp > 0.01)	// There is sleeping gas in their lungs, but only a little, so give them a bit of a warning
+				if(prob(20))
+					spawn(0) emote(pick("giggle", "laugh"))
 
 		if( (abs(310.15 - breath.temperature) > 50) && !(COLD_RESISTANCE in mutations)) // Hot air hurts :(
 			if(breath.temperature < 260.15)
@@ -756,7 +757,7 @@
 				var/turf/T = loc
 				var/area/A = T.loc
 				if(A)
-					if(A.lighting_use_dynamic)	light_amount = min(10,T.lighting_lumcount) - 5 //hardcapped so it's not abused by having a ton of flashlights
+					if(A.dynamic_lighting)	light_amount = min(10,T.get_lumcount() * 10) - 5 //hardcapped so it's not abused by having a ton of flashlights
 					else						light_amount =  5
 			nutrition += light_amount
 			if(nutrition > 500)
@@ -771,7 +772,7 @@
 				var/turf/T = loc
 				var/area/A = T.loc
 				if(A)
-					if(A.lighting_use_dynamic)	light_amount = T.lighting_lumcount
+					if(A.dynamic_lighting)	light_amount = T.get_lumcount() * 10
 					else						light_amount =  10
 			if(light_amount > 2) //if there's enough light, start dying
 				take_overall_damage(1,1)
@@ -962,6 +963,9 @@
 			if(stuttering)
 				stuttering = max(stuttering-1, 0)
 
+			if(slurring)
+				slurring = max(slurring-1, 0)
+
 			if(silent)
 				silent = max(silent-1, 0)
 
@@ -986,60 +990,77 @@
 			if(copytext(hud.icon_state,1,4) == "hud") //ugly, but icon comparison is worse, I believe
 				client.images.Remove(hud)
 
-		client.screen.Remove(global_hud.blurry, global_hud.druggy, global_hud.vimpaired, global_hud.darkMask)
-
 		update_action_buttons()
-
-		if(damageoverlay.overlays)
-			damageoverlay.overlays = list()
 
 		if(stat == UNCONSCIOUS)
 			//Critical damage passage overlay
 			if(health <= config.health_threshold_crit)
 				var/image/I = image("icon" = 'icons/mob/screen_full.dmi', "icon_state" = "passage0")
 				I.blend_mode = BLEND_OVERLAY //damageoverlay is BLEND_MULTIPLY
+				var/severity = 0
 				switch(health)
 					if(-20 to -10)
 						I.icon_state = "passage1"
+						severity = 1
 					if(-30 to -20)
 						I.icon_state = "passage2"
+						severity = 2
 					if(-40 to -30)
 						I.icon_state = "passage3"
+						severity = 3
 					if(-50 to -40)
 						I.icon_state = "passage4"
+						severity = 4
 					if(-60 to -50)
 						I.icon_state = "passage5"
+						severity = 5
 					if(-70 to -60)
 						I.icon_state = "passage6"
+						severity = 6
 					if(-80 to -70)
 						I.icon_state = "passage7"
+						severity = 7
 					if(-90 to -80)
 						I.icon_state = "passage8"
+						severity = 8
 					if(-95 to -90)
 						I.icon_state = "passage9"
+						severity = 9
 					if(-INFINITY to -95)
 						I.icon_state = "passage10"
-				damageoverlay.overlays += I
+						severity = 10
+				overlay_fullscreen("crit", /obj/screen/fullscreen/crit, severity)
 		else
+			clear_fullscreen("crit")
 			//Oxygen damage overlay
 			if(oxyloss)
 				var/image/I = image("icon" = 'icons/mob/screen_full.dmi', "icon_state" = "oxydamageoverlay0")
+				var/severity = 0
 				switch(oxyloss)
 					if(10 to 20)
 						I.icon_state = "oxydamageoverlay1"
+						severity = 1
 					if(20 to 25)
 						I.icon_state = "oxydamageoverlay2"
+						severity = 2
 					if(25 to 30)
 						I.icon_state = "oxydamageoverlay3"
+						severity = 3
 					if(30 to 35)
 						I.icon_state = "oxydamageoverlay4"
+						severity = 4
 					if(35 to 40)
 						I.icon_state = "oxydamageoverlay5"
+						severity = 5
 					if(40 to 45)
 						I.icon_state = "oxydamageoverlay6"
+						severity = 6
 					if(45 to INFINITY)
 						I.icon_state = "oxydamageoverlay7"
-				damageoverlay.overlays += I
+						severity = 7
+				overlay_fullscreen("oxy", /obj/screen/fullscreen/oxy, severity)
+			else
+				clear_fullscreen("oxy")
 
 			//Fire and Brute damage overlay (BSSR)
 			var/hurtdamage = src.getBruteLoss() + src.getFireLoss() + src.getBloodLoss() + damageoverlaytemp
@@ -1047,23 +1068,29 @@
 			if(hurtdamage)
 				var/image/I = image("icon" = 'icons/mob/screen_full.dmi', "icon_state" = "brutedamageoverlay0")
 				I.blend_mode = BLEND_ADD
+				var/severity = 0
 				switch(hurtdamage)
 					if(5 to 15)
 						I.icon_state = "brutedamageoverlay1"
+						severity = 1
 					if(15 to 30)
 						I.icon_state = "brutedamageoverlay2"
+						severity = 2
 					if(30 to 45)
 						I.icon_state = "brutedamageoverlay3"
+						severity = 3
 					if(45 to 70)
 						I.icon_state = "brutedamageoverlay4"
+						severity = 4
 					if(70 to 85)
 						I.icon_state = "brutedamageoverlay5"
+						severity = 5
 					if(85 to INFINITY)
 						I.icon_state = "brutedamageoverlay6"
-				var/image/black = image(I.icon, I.icon_state) //BLEND_ADD doesn't let us darken, so this is just to blacken the edge of the screen
-				black.color = "#170000"
-				damageoverlay.overlays += I
-				damageoverlay.overlays += black
+						severity = 6
+				overlay_fullscreen("brute", /obj/screen/fullscreen/brute, severity)
+			else
+				clear_fullscreen("brute")
 
 		if( stat == DEAD )
 			sight |= (SEE_TURFS|SEE_MOBS|SEE_OBJS)
@@ -1098,6 +1125,19 @@
 			else
 				hud_used.lingchemdisplay.invisibility = 101
 
+			var/helmet_hud = 0
+
+			if(istype(wear_suit, /obj/item/clothing/suit/space/powersuit))
+				var/obj/item/clothing/suit/space/powersuit/P = wear_suit
+				if(P && P.powered && P.current_vision && head == P.helmet)
+					helmet_hud = 1
+					var/obj/item/clothing/glasses/G = P.current_vision
+					sight |= G.vision_flags
+					see_in_dark = G.darkness_view
+					see_invisible = G.invis_view
+					if(G.hud)
+						G.process_hud(src)
+
 			if(istype(wear_mask, /obj/item/clothing/mask/gas/voice/space_ninja))
 				var/obj/item/clothing/mask/gas/voice/space_ninja/O = wear_mask
 				switch(O.mode)
@@ -1119,7 +1159,7 @@
 						sight |= SEE_TURFS
 						see_invisible = SEE_INVISIBLE_LIVING
 
-			if(glasses)
+			if(glasses && !helmet_hud) //Dont use any goggle stuff if the powersuit helmet is using something
 				if(istype(glasses, /obj/item/clothing/glasses))
 					var/obj/item/clothing/glasses/G = glasses
 					sight |= G.vision_flags
@@ -1207,23 +1247,30 @@
 				if(tinted_weldhelh)
 					if(tinttotal >= TINT_BLIND)
 						blinded = 1								// You get the sudden urge to learn to play keyboard
-						client.screen += global_hud.darkMask
+						clear_fullscreen("tint")
 					else
-						client.screen += global_hud.darkMask
+						overlay_fullscreen("tint", /obj/screen/fullscreen/impaired, 2)
+			else
+				clear_fullscreen("tint")
+			if(blinded)
+				overlay_fullscreen("blind", /obj/screen/fullscreen/blind)
+			else
+				clear_fullscreen("blind")
 
-			if(blind)
-				if(blinded)		blind.layer = 18
-				else			blind.layer = 0
+			if(eye_stat > 30) overlay_fullscreen("impaired", /obj/screen/fullscreen/impaired, 2)
+			else if(eye_stat > 20) overlay_fullscreen("impaired", /obj/screen/fullscreen/impaired, 1)
+			else clear_fullscreen("impaired")
 
 			if( disabilities & NEARSIGHTED && !istype(glasses, /obj/item/clothing/glasses/regular) )
-				client.screen += global_hud.vimpaired
-			if(eye_blurry)			client.screen += global_hud.blurry
-			if(druggy)				client.screen += global_hud.druggy
+				overlay_fullscreen("nearsighted", /obj/screen/fullscreen/impaired, 1)
+			else
+				clear_fullscreen("nearsighted")
 
 
-			if(eye_stat > 20)
-				if(eye_stat > 30)	client.screen += global_hud.darkMask
-				else				client.screen += global_hud.vimpaired
+			if(eye_blurry)			overlay_fullscreen("blurry", /obj/screen/fullscreen/blurry)
+			else					clear_fullscreen("blurry")
+			if(druggy)				overlay_fullscreen("high", /obj/screen/fullscreen/high)
+			else					clear_fullscreen("high")
 
 			if(machine)
 				if(!machine.check_eye(src))		reset_view(null)
@@ -1343,7 +1390,3 @@
 
 #undef HUMAN_MAX_OXYLOSS
 #undef HUMAN_CRIT_MAX_OXYLOSS
-
-#undef BLOODLOSS_DEFAULT
-#undef BLOODLOSS_SAFE
-#undef BLOODLOSS_CRIT

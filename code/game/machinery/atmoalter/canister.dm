@@ -48,6 +48,22 @@
 	icon_state = "grey"
 	canister_color = "grey"
 	can_label = 0
+//debugery
+/obj/machinery/portable_atmospherics/canister/burnmix
+	name = "canister \[Fuel\]"
+	icon_state = "orange"
+	canister_color = "orange"
+	can_label = 0
+	volume = 100000
+
+/obj/machinery/portable_atmospherics/canister/burnmix/New()
+	..()
+	src.air_contents.gasses[OXYGEN] = (src.maximum_pressure*(1/3)*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
+	src.air_contents.gasses[PLASMA] = (src.maximum_pressure*(2/3)*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
+
+	src.update_icon()
+	return 1
+//end debugery
 
 /obj/machinery/portable_atmospherics/canister/proc/check_change()
 	var/old_flag = update_flag
@@ -304,6 +320,17 @@ Release Pressure: <A href='?src=\ref[src];pressure_adj=-1000'>-</A> <A href='?sr
 					release_log += "Valve was <b>opened</b> by [usr] ([usr.ckey]), starting the transfer into the [holding]<br>"
 				else
 					release_log += "Valve was <b>opened</b> by [usr] ([usr.ckey]), starting the transfer into the <font color='red'><b>air</b></font><br>"
+					var/dangerous = 0
+					for(var/G in air_contents.gasses)
+						if(G == PLASMA && air_contents.gasses[G])
+							dangerous = 1
+						if(G == NITROUS && air_contents.gasses[G])
+							dangerous = 1
+						if(G == CARBONDIOXIDE && air_contents.gasses[G])
+							dangerous = 1
+					if(dangerous)
+						message_admins ("[key_name_admin(usr)] released gas from [src] @{[x], [y], [z]}")
+						log_game("[key_name_admin(usr)] released gas from [src] @{[x], [y], [z]}")
 			valve_open = !valve_open
 
 		if (href_list["remove_tank"])
@@ -346,7 +373,7 @@ Release Pressure: <A href='?src=\ref[src];pressure_adj=-1000'>-</A> <A href='?sr
 
 	..()
 
-	src.air_contents.toxins = (src.maximum_pressure*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
+	src.air_contents.gasses[PLASMA] = (src.maximum_pressure*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
 
 	src.update_icon()
 	return 1
@@ -355,7 +382,7 @@ Release Pressure: <A href='?src=\ref[src];pressure_adj=-1000'>-</A> <A href='?sr
 
 	..()
 
-	src.air_contents.oxygen = (src.maximum_pressure*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
+	src.air_contents.gasses[OXYGEN] = (src.maximum_pressure*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
 
 	src.update_icon()
 	return 1
@@ -363,10 +390,7 @@ Release Pressure: <A href='?src=\ref[src];pressure_adj=-1000'>-</A> <A href='?sr
 /obj/machinery/portable_atmospherics/canister/sleeping_agent/New()
 
 	..()
-
-	var/datum/gas/sleeping_agent/trace_gas = new
-	air_contents.trace_gases += trace_gas
-	trace_gas.moles = (src.maximum_pressure*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
+	air_contents.gasses[NITROUS] = (src.maximum_pressure*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
 
 	src.update_icon()
 	return 1
@@ -374,8 +398,7 @@ Release Pressure: <A href='?src=\ref[src];pressure_adj=-1000'>-</A> <A href='?sr
 //Dirty way to fill room with gas. However it is a bit easier to do than creating some floor/engine/n2o -rastaf0
 /obj/machinery/portable_atmospherics/canister/sleeping_agent/roomfiller/New()
 	..()
-	var/datum/gas/sleeping_agent/trace_gas = air_contents.trace_gases[1]
-	trace_gas.moles = 9*4000
+	air_contents.gasses[NITROUS] = 9*4000
 	spawn(10)
 		var/turf/simulated/location = src.loc
 		if (istype(src.loc))
@@ -389,7 +412,7 @@ Release Pressure: <A href='?src=\ref[src];pressure_adj=-1000'>-</A> <A href='?sr
 
 	..()
 
-	src.air_contents.nitrogen = (src.maximum_pressure*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
+	src.air_contents.gasses[NITROGEN] = (src.maximum_pressure*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
 
 	src.update_icon()
 	return 1
@@ -397,7 +420,7 @@ Release Pressure: <A href='?src=\ref[src];pressure_adj=-1000'>-</A> <A href='?sr
 /obj/machinery/portable_atmospherics/canister/carbon_dioxide/New()
 
 	..()
-	src.air_contents.carbon_dioxide = (src.maximum_pressure*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
+	src.air_contents.gasses[CARBONDIOXIDE] = (src.maximum_pressure*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
 
 	src.update_icon()
 	return 1
@@ -406,8 +429,8 @@ Release Pressure: <A href='?src=\ref[src];pressure_adj=-1000'>-</A> <A href='?sr
 /obj/machinery/portable_atmospherics/canister/air/New()
 
 	..()
-	src.air_contents.oxygen = (O2STANDARD*src.maximum_pressure*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
-	src.air_contents.nitrogen = (N2STANDARD*src.maximum_pressure*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
+	src.air_contents.gasses[OXYGEN] = (O2STANDARD*src.maximum_pressure*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
+	src.air_contents.gasses[NITROGEN] = (N2STANDARD*src.maximum_pressure*filled)*air_contents.volume/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
 
 	src.update_icon()
 	return 1

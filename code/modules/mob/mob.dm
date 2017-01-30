@@ -34,13 +34,8 @@ var/next_mob_id = 0
 
 	var/t = "\blue Coordinates: [x],[y] \n"
 	t+= "\red Temperature: [environment.temperature] \n"
-	t+= "\blue Nitrogen: [environment.nitrogen] \n"
-	t+= "\blue Oxygen: [environment.oxygen] \n"
-	t+= "\blue Plasma : [environment.toxins] \n"
-	t+= "\blue Carbon Dioxide: [environment.carbon_dioxide] \n"
-	for(var/datum/gas/trace_gas in environment.trace_gases)
-		usr << "\blue [trace_gas.type]: [trace_gas.moles] \n"
-
+	for(var/G in environment.gasses)
+		t+= "\blue [G]: [environment.gasses[G]] \n"
 	usr.show_message(t, 1)
 
 /mob/proc/show_message(msg, type, alt, alt_type)//Message, type of message (1 or 2), alternative message, alt message type (1 or 2)
@@ -539,7 +534,7 @@ var/list/slot_equipment_priority = list( \
 		pulling = null
 
 /mob/proc/start_pulling(var/atom/movable/AM)
-	if ( !AM || !usr || src==AM || !isturf(src.loc) )	//if there's no person pulling OR the person is pulling themself OR the object being pulled is inside something: abort!
+	if ( !AM || !usr || src==AM || !isturf(src.loc) || !isturf(AM.loc) )	//if there's no person pulling OR the person is pulling themself OR the object being pulled is inside something: abort!
 		return
 	if (!( AM.anchored ))
 		AM.add_fingerprint(src)
@@ -587,22 +582,17 @@ var/list/slot_equipment_priority = list( \
 			stat(null,"CPU:\t[world.cpu]")
 			stat(null,"Instances:\t[world.contents.len]")
 
-			if(master_controller)
-				stat(null,"MasterController-[last_tick_duration] ([master_controller.processing?"On":"Off"]-[controller_iteration])")
-				stat(null,"Air-[master_controller.air_cost]\t#[global_activeturfs]")
-				stat(null,"Turfs-[master_controller.air_turfs]\tGroups-[master_controller.air_groups]")
-				stat(null,"SC-[master_controller.air_superconductivity]\tHP-[master_controller.air_highpressure]\tH-[master_controller.air_hotspots]")
-				stat(null,"Sun-[master_controller.sun_cost]")
-				stat(null,"Mob-[master_controller.mobs_cost]\t#[mob_list.len]")
-				stat(null,"Dis-[master_controller.diseases_cost]\t#[active_diseases.len]")
-				stat(null,"Mch-[master_controller.machines_cost]\t#[machines.len]")
-				stat(null,"Obj-[master_controller.objects_cost]\t#[processing_objects.len]")
-				stat(null,"Net-[master_controller.networks_cost]\tPnet-[master_controller.powernets_cost]")
-				stat(null,"NanoUI-[master_controller.nano_cost]\t#[nanomanager.processing_uis.len]")
-				stat(null,"GC-[master_controller.gc_cost]\t#[garbage.destroyed.len]-#dels[garbage.dels]")
-				stat(null,"Tick-[master_controller.ticker_cost]\tALL-[master_controller.total_cost]")
+			if(processScheduler && processScheduler.isRunning)
+				for (var/datum/controller/process/p in processScheduler.processes)
+					var/status_txt = p.getStatusText()
+					if(status_txt == "idle")
+						stat(null , "[uppertext(p.name)]-[status_txt]")
+					else
+						stat(null , "[uppertext(p.name)]-[status_txt][p.last_task ? "-[p.last_task]" : ""][p.last_object ? "-[p.last_object]" : ""]")
+
 			else
-				stat(null,"MasterController-ERROR")
+				stat(null, "processScheduler is not running.")
+
 
 	if(listed_turf && client)
 		if(!TurfAdjacent(listed_turf))
@@ -611,6 +601,8 @@ var/list/slot_equipment_priority = list( \
 			statpanel(listed_turf.name, null, listed_turf)
 			for(var/atom/A in listed_turf)
 				if(A.invisibility > see_invisible)
+					continue
+				if(istype(A,/atom/movable/lighting_overlay))
 					continue
 				statpanel(listed_turf.name, null, A)
 

@@ -1,47 +1,52 @@
 /datum/round_event_control/blob
 	name = "Blob"
 	typepath = /datum/round_event/blob
+	event_flags = EVENT_STANDARD
 	max_occurrences = 1
-	phases_required = 5 //25 to 75 minutes
-	players_needed = 10
-	rating = list(
-				"Gameplay"	= 100,
-				"Dangerous"	= 100
-				)
+	earliest_start = 48000 // 1 hour 20 minutes
+	weight = 5
 
 /datum/round_event/blob
-	announceWhen	= 12
-	endWhen			= 120
-
+	alert_when	= 120
+	end_when = -1
+	var/blobwincount = 350
 	var/obj/effect/blob/core/Blob
 
 
-/datum/round_event/blob/announce()
-	priority_announce("Confirmed outbreak of level 5 biohazard aboard [station_name()]. All personnel must contain the outbreak.", "Biohazard Alert", 'sound/AI/outbreak5.ogg')
+	Alert()
+		priority_announce("Confirmed outbreak of level 5 biohazard aboard [station_name()]. All personnel must contain the outbreak.", "Biohazard Alert", 'sound/AI/outbreak5.ogg')
+
+	Start()
+		if (!prevent_stories) EventStory("A Confirmed outbreak of level 5 biohazard was reported aboard [station_name()].")
+		var/turf/T = pick(blobstart)
+		if(!T)
+			return CancelSelf()
+		Blob = new /obj/effect/blob/core(T, 200, null, 3)
+		for(var/i = 1; i < rand(3, 6), i++)
+			Blob.process()
 
 
-/datum/round_event/blob/start()
-	var/turf/T = pick(blobstart)
-	if(!T)
-		return kill()
-	Blob = new /obj/effect/blob/core(T, 200)
-	for(var/i = 1; i < rand(3, 6), i++)
-		Blob.process()
+	Tick()
+		if(!blob_cores.len)
+			AbruptEnd()
+			return
+		if(IsMultiple(active_for, 3))
+			Blob.process()
+		if(blobwincount <= blobs.len)//Blob took over
+			return 1
+		return 0
 
+	End()
+		if(!blob_cores.len)
+			OnPass()
+		else
+			OnFail()
 
-/datum/round_event/blob/tick()
-	if(!Blob)
-		kill()
-		return
-	if(IsMultiple(activeFor, 3))
-		Blob.process()
+	OnFail()
+		if (!prevent_stories) EventStory("The level 5 biohazard consumed what was left of [station_name()].",1)
 
-/datum/round_event/blob/declare_completion()
-	var/core_count = 0
-	for(var/obj/effect/blob/core/C in world)
-		if(C.loc)
-			core_count++
-	if(core_count)
-		return "<b>Blob:</b> <font color='red'>The blob was not destroyed</font>"
-	else
-		return "<b>Alien Infestation:</b> <font color='green'>The blob's core was destroyed</font>"
+	OnPass()
+		if (!prevent_stories) EventStory("The crew managed to destroy the level 5 biohazard.")
+		for(var/mob/living/carbon/human/L in player_list)
+			if(L.stat != DEAD)
+				events.AddAwards("eventmedal_blob",list("[L.key]"))

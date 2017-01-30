@@ -34,9 +34,6 @@
 	new /obj/item/clothing/head/beret/sec(src)
 	new /obj/item/clothing/head/beret/sec(src)
 	new /obj/item/clothing/head/beret/sec(src)
-	new /obj/item/clothing/head/beret/sec/navyofficer(src)
-	new /obj/item/clothing/head/beret/sec/navyofficer(src)
-	new /obj/item/clothing/head/beret/sec/navyofficer(src)
 	new /obj/item/clothing/suit/armor/vest/jacket(src)
 	if(prob(30))
 		new /obj/item/clothing/suit/armor/vest/jacket(src)
@@ -46,15 +43,13 @@
 	new /obj/item/clothing/under/rank/security(src)
 	new /obj/item/clothing/under/rank/security(src)
 	new /obj/item/clothing/under/rank/security(src)
-	new /obj/item/clothing/under/rank/security/navyblue(src)
-	new /obj/item/clothing/under/rank/security/navyblue(src)
-	new /obj/item/clothing/under/rank/security/navyblue(src)
 	new /obj/item/clothing/shoes/jackboots(src)
 	new /obj/item/clothing/shoes/jackboots(src)
 	new /obj/item/clothing/shoes/jackboots(src)
 	new /obj/item/clothing/head/soft/sec(src)
 	new /obj/item/clothing/head/soft/sec(src)
 	new /obj/item/clothing/head/soft/sec(src)
+	new /obj/item/clothing/tie/scarf{color = "#e32636"}(src)
 	return
 
 /obj/structure/closet/wardrobe/hos
@@ -67,11 +62,10 @@
 	new /obj/item/clothing/under/camo(src)
 	new /obj/item/clothing/suit/armor/vest/jacket(src)
 	new /obj/item/clothing/head/beret/sec(src)
-	new /obj/item/clothing/head/beret/sec/navyhos(src)
 	new /obj/item/clothing/under/hosformalfem(src)
 	new /obj/item/clothing/under/hosformalmale(src)
 	new /obj/item/clothing/under/rank/head_of_security/jensen(src)
-	new /obj/item/clothing/under/rank/head_of_security/navyblue(src)
+	new /obj/item/clothing/tie/scarf{color = "#e32636"}(src)
 	return
 
 /obj/structure/closet/wardrobe/pink
@@ -86,6 +80,7 @@
 	new /obj/item/clothing/under/color/pink(src)
 	new /obj/item/clothing/under/color/pink(src)
 	new /obj/item/clothing/under/color/pink(src)
+	new /obj/item/clothing/suit/wintercoat/hoodie/pink(src)
 	new /obj/item/clothing/shoes/sneakers/brown(src)
 	new /obj/item/clothing/shoes/sneakers/brown(src)
 	new /obj/item/clothing/shoes/sneakers/brown(src)
@@ -103,8 +98,10 @@
 	new /obj/item/clothing/shoes/sneakers/black(src)
 	new /obj/item/clothing/shoes/sneakers/black(src)
 	new /obj/item/clothing/shoes/sneakers/black(src)
+	new /obj/item/clothing/suit/wintercoat/hoodie/black(src)
 	if(prob(30))
 		new /obj/item/clothing/suit/labcoat/jacket/leather(src)
+		new /obj/item/clothing/suit/labcoat/jacket/biker(src)
 	if(prob(40))
 		new /obj/item/clothing/mask/bandana/skull(src)
 	else
@@ -123,6 +120,7 @@
 	new /obj/item/clothing/head/soft/black(src)
 	new /obj/item/clothing/head/soft/black(src)
 	new /obj/item/clothing/head/soft/black(src)
+	new /obj/item/clothing/tie/scarf{color = "#262626"}(src)
 	return
 
 
@@ -158,12 +156,14 @@
 	new /obj/item/clothing/mask/bandana/green(src)
 	new /obj/item/clothing/mask/bandana/green(src)
 	new /obj/item/clothing/mask/bandana/green(src)
+	new /obj/item/clothing/suit/wintercoat/hoodie/green(src)
 	new /obj/item/clothing/under/color/lightgreen(src)
 	new /obj/item/clothing/under/color/lightgreen(src)
 	new /obj/item/clothing/under/color/lightgreen(src)
 	new /obj/item/clothing/shoes/sneakers/black(src)
 	new /obj/item/clothing/shoes/sneakers/black(src)
 	new /obj/item/clothing/shoes/sneakers/black(src)
+	new /obj/item/clothing/tie/scarf{color = "#009933"}(src)
 	return
 
 
@@ -297,6 +297,7 @@
 /obj/structure/closet/wardrobe/robotics_black/New()
 	new /obj/item/clothing/suit/labcoat(src)
 	new /obj/item/clothing/suit/labcoat(src)
+	new /obj/item/clothing/suit/wintercoat/hoodie/black(src)
 	new /obj/item/clothing/under/rank/roboticist(src)
 	new /obj/item/clothing/under/rank/roboticist(src)
 	if(prob(40))
@@ -390,6 +391,12 @@
 	new /obj/item/clothing/under/color/grey(src)
 	new /obj/item/clothing/under/color/grey(src)
 	new /obj/item/clothing/under/color/grey(src)
+	new /obj/item/clothing/tie/scarf(src)
+	new /obj/item/clothing/tie/scarf(src)
+	new /obj/item/clothing/tie/scarf(src)
+	new /obj/item/clothing/suit/wintercoat/hoodie/pink(src)
+	new /obj/item/clothing/suit/wintercoat/hoodie/blue(src)
+	new /obj/item/clothing/suit/wintercoat/hoodie/red(src)
 	new /obj/item/clothing/head/beanie(src)
 	new /obj/item/clothing/head/beanie(src)
 	new /obj/item/clothing/head/beanie(src)
@@ -418,6 +425,12 @@
 	new /obj/item/clothing/under/color/orange(src)
 	new /obj/item/clothing/under/color/pink(src)
 	new /obj/item/clothing/under/lightpink(src)
+	new /obj/item/clothing/suit/wintercoat/hoodie/random(src)
+	new /obj/item/clothing/suit/wintercoat/hoodie/random(src)
+	new /obj/item/clothing/suit/wintercoat/hoodie/random(src)
+	new /obj/item/clothing/tie/scarf{color = "#999966"}(src) //tan
+	new /obj/item/clothing/tie/scarf{color = "#CCCCFF"}(src) //periwinkle
+	new /obj/item/clothing/tie/scarf{color = "#ff6699"}(src) //pink
 	if(prob(40))
 		new /obj/item/clothing/under/color/lightred(src)
 	if(prob(40))

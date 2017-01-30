@@ -9,6 +9,10 @@
 	size_h = 480
 	laptop = 1
 
+	New()
+		..()
+		//core.programs.Add(new /datum/program/nanonet)
+
 	update_label()
 		name = "Laptop-[core.owner] ([core.ownjob])" //Name generalisation
 		owner = core.owner
@@ -81,6 +85,11 @@
 		set name = "Toggle Laptop"
 		set category = "Object"
 		set src in oview(1)
+
+		//ghost interaction check
+		if(istype(usr,/mob/dead/observer) && config && !config.ghost_interaction)
+			return
+
 		toggle_mount()
 		add_fingerprint(usr)
 

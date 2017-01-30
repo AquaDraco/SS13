@@ -12,29 +12,24 @@
 	action_button_name = "Toggle Light"
 	var/on = 0
 	var/brightness_on = 4 //luminosity when on
+	var/brightness_power = 1
 
 /obj/item/device/flashlight/initialize()
 	..()
 	if(on)
 		icon_state = "[initial(icon_state)]-on"
-		SetLuminosity(brightness_on)
+		set_light(brightness_on, brightness_power, light_color)
 	else
 		icon_state = initial(icon_state)
-		SetLuminosity(0)
+		set_light(0)
 
 /obj/item/device/flashlight/proc/update_brightness(var/mob/user = null)
 	if(on)
 		icon_state = "[initial(icon_state)]-on"
-		if(loc == user)
-			user.AddLuminosity(brightness_on)
-		else if(isturf(loc))
-			SetLuminosity(brightness_on)
+		set_light(brightness_on)
 	else
 		icon_state = initial(icon_state)
-		if(loc == user)
-			user.AddLuminosity(-brightness_on)
-		else if(isturf(loc))
-			SetLuminosity(0)
+		set_light(0)
 
 /obj/item/device/flashlight/attack_self(mob/user)
 	if(!isturf(user.loc))
@@ -63,7 +58,7 @@
 
 		if(M == user)	//they're using it on themselves
 			if(!M.blinded)
-				flick("flash", M.flash)
+				M.flash_eyes()
 				M.visible_message("<span class='notice'>[M] directs [src] to \his eyes.</span>", \
 									 "<span class='notice'>You wave the light in front of your eyes! Trippy!</span>")
 			else
@@ -81,22 +76,10 @@
 				user << "<span class='notice'>[M] pupils give an eerie glow!</span>"
 			else	//they're okay!
 				if(!M.blinded)
-					flick("flash", M.flash)	//flash the affected mob
+					M.flash_eyes()
 					user << "<span class='notice'>[M]'s pupils narrow.</span>"
 	else
 		return ..()
-
-
-/obj/item/device/flashlight/pickup(mob/user)
-	if(on)
-		user.AddLuminosity(brightness_on)
-		SetLuminosity(0)
-
-
-/obj/item/device/flashlight/dropped(mob/user)
-	if(on)
-		user.AddLuminosity(-brightness_on)
-		SetLuminosity(brightness_on)
 
 
 /obj/item/device/flashlight/pen
@@ -129,6 +112,7 @@
 	m_amt = 0
 	g_amt = 0
 	on = 1
+	//light_color = "#FFC58F"
 
 
 // green-shaded desk lamp
@@ -166,6 +150,7 @@
 	var/fuel = 0
 	var/on_damage = 7
 	var/produce_heat = 1500
+	light_color = "#E58775"
 
 /obj/item/device/flashlight/flare/New()
 	fuel = rand(800, 1000) // Sorry for changing this so much but I keep under-estimating how long X number of ticks last in seconds.

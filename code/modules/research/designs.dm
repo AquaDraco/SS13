@@ -256,6 +256,15 @@ datum/design/arcadebattle
 	materials = list("$glass" = 1000, "sacid" = 20)
 	build_path = /obj/item/weapon/circuitboard/arcade/battle
 
+datum/design/slot_machine
+	name = "Computer Design (Slot Machine)"
+	desc = "Allows for the construction of circuit boards used to build a new slot machine."
+	id = "slot_machine"
+	req_tech = list("programming" = 2)
+	build_type = IMPRINTER
+	materials = list("$glass" = 1000, "sacid" = 20)
+	build_path = /obj/item/weapon/circuitboard/slot_machine
+
 datum/design/orion_trail
 	name = "Computer Design (Orion Trail Arcade Machine)"
 	desc = "Allows for the construction of circuit boards used to build a new Orion Trail machine."
@@ -675,6 +684,7 @@ datum/design/item/posibrain
 	build_type = PROTOLATHE | MECHFAB
 	materials = list("$metal" = 2000, "$glass" = 1000, "$silver" = 1000, "$gold" = 500, "$diamond" = 100)
 	build_path = /obj/item/device/mmi/digital/posibrain
+	category = "Misc"
 
 ///////////////////////////////////
 //////////Mecha Module Disks///////

@@ -52,7 +52,7 @@
 			continue
 		if(M.client && M.client.holder && (M.client.prefs.toggles & CHAT_DEAD)) //admins can toggle deadchat on and off. This is a proc in admin.dm and is only give to Administrators and above
 			M << rendered	//Admins can hear deadchat, if they choose to, no matter if they're blind/deaf or not.
-		else if(M.stat == DEAD)
+		else if(M.stat == DEAD && !M.scrying)
 			M.show_message(rendered, 2) //Takes into account blindness and such.
 	return
 
@@ -71,12 +71,16 @@
 	var/ending = copytext(text, length(text))
 	if (src.stuttering)
 		return "stammers, \"[text]\"";
+	if (src.slurring)
+		return "slurs, \"[text]\"";
 	if(isliving(src))
 		var/mob/living/L = src
 		if (L.getBrainLoss() >= 60)
 			return "gibbers, \"[text]\"";
 	if (ending == "?")
 		return "asks, \"[text]\"";
+	if (copytext(text, length(text) - 1) == "!!")
+		return "yells, \"<span class = 'yell'>[text]</span>\""
 	if (ending == "!")
 		return "exclaims, \"[text]\"";
 

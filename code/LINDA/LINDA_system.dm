@@ -14,6 +14,13 @@ datum/controller/air_system
 
 	var/current_cycle = 0
 
+	//These were in the old master controller, putting them here to keep track of those specific values
+	var/air_turfs		= 0
+	var/air_groups		= 0
+	var/air_highpressure= 0
+	var/air_hotspots	= 0
+	var/air_superconductivity = 0
+
 
 /datum/controller/air_system/proc/setup()
 	set background = BACKGROUND_ENABLED
@@ -27,58 +34,6 @@ datum/controller/air_system
 	global_activeturfs = active_turfs.len
 
 	world << "\red \b Geometry processed in [(world.timeofday-start_time)/10] seconds!"
-
-/datum/controller/air_system/proc/process()
-	if(kill_air)
-		return 1
-
-	if(speed > 1)
-		for(var/i=0,i<speed,i++)
-			spawn((10/speed)*i)
-				process_air()
-	else
-		process_air()
-	return 1
-
-/datum/controller/air_system/proc/process_air()
-	current_cycle++
-	var/timer = world.timeofday
-	process_active_turfs()
-	master_controller.air_turfs = (world.timeofday - timer) / 10
-
-	timer = world.timeofday
-	process_excited_groups()
-	master_controller.air_groups = (world.timeofday - timer) / 10
-
-	timer = world.timeofday
-	process_high_pressure_delta()
-	master_controller.air_highpressure = (world.timeofday - timer) / 10
-
-	timer = world.timeofday
-	process_hotspots()
-	master_controller.air_hotspots = (world.timeofday - timer) / 10
-
-	timer = world.timeofday
-	process_super_conductivity()
-	master_controller.air_superconductivity = (world.timeofday - timer) / 10
-
-/datum/controller/air_system/proc/process_hotspots()
-	for(var/obj/effect/hotspot/H in hotspots)
-		H.process()
-
-/datum/controller/air_system/proc/process_super_conductivity()
-	for(var/turf/simulated/T in active_super_conductivity)
-		T.super_conduct()
-
-/datum/controller/air_system/proc/process_high_pressure_delta()
-	for(var/turf/T in high_pressure_delta)
-		T.high_pressure_movements()
-		T.pressure_difference = 0
-	high_pressure_delta.len = 0
-
-/datum/controller/air_system/proc/process_active_turfs()
-	for(var/turf/simulated/T in active_turfs)
-		T.process_cell()
 
 /datum/controller/air_system/proc/remove_from_active(var/turf/simulated/T)
 	if(istype(T))
@@ -121,15 +76,6 @@ datum/controller/air_system
 					if(!T.air.check_turf(enemy_tile))
 						T.excited = 1
 						active_turfs |= T
-
-/datum/controller/air_system/proc/process_excited_groups()
-	for(var/datum/excited_group/EG in excited_groups)
-		EG.breakdown_cooldown ++
-		if(EG.breakdown_cooldown == 10)
-			EG.self_breakdown()
-			return
-		if(EG.breakdown_cooldown > 20)
-			EG.dismantle()
 
 /turf/proc/CanAtmosPass(var/turf/T)
 	if(!istype(T))	return 0
@@ -259,22 +205,20 @@ var/const/SPAWN_AIR = 256
 		G.temperature += 1000
 
 	if(flag & SPAWN_TOXINS)
-		G.toxins += amount
+		G.add_gas(PLASMA, amount)
 	if(flag & SPAWN_OXYGEN)
-		G.oxygen += amount
+		G.add_gas(OXYGEN, amount)
 	if(flag & SPAWN_CO2)
-		G.carbon_dioxide += amount
+		G.add_gas(CARBONDIOXIDE, amount)
 	if(flag & SPAWN_NITROGEN)
-		G.nitrogen += amount
+		G.add_gas(NITROGEN, amount)
 
 	if(flag & SPAWN_N2O)
-		var/datum/gas/sleeping_agent/T = new
-		T.moles += amount
-		G.trace_gases += T
+		G.add_gas(NITROUS, amount)
 
 	if(flag & SPAWN_AIR)
-		G.oxygen += MOLES_O2STANDARD * amount
-		G.nitrogen += MOLES_N2STANDARD * amount
+		G.add_gas(OXYGEN, MOLES_O2STANDARD * amount)
+		G.add_gas(NITROGEN, MOLES_N2STANDARD * amount)
 
 	air.merge(G)
 	air_master.add_to_active(src, 0)

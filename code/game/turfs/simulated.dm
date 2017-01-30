@@ -1,11 +1,11 @@
 /turf/simulated
 	name = "station"
+	dynamic_lighting = 1
 	var/wet = 0
 	var/image/wet_overlay = null
 
 	var/thermite = 0
-	oxygen = MOLES_O2STANDARD
-	nitrogen = MOLES_N2STANDARD
+	gasses = list(OXYGEN = MOLES_O2STANDARD, NITROGEN = MOLES_N2STANDARD)
 	var/to_be_destroyed = 0 //Used for fire, if a melting temperature was reached, it will be destroyed
 	var/max_fire_temperature_sustained = 0 //The max temperature of the fire which it was subjected to
 
@@ -42,7 +42,18 @@
 		if(M.lying)	return
 		if(istype(M, /mob/living/carbon/human))
 			var/mob/living/carbon/human/H = M
-			if(istype(H.shoes, /obj/item/clothing/shoes/clown_shoes))
+			if(istype(H.wear_suit, /obj/item/clothing/suit/space/powersuit))
+				var/obj/item/clothing/suit/space/powersuit/O = H.wear_suit
+				if(O.armor_attachment)
+					if(H.m_intent == "run" && O.powered)
+						if(O.footstep >= 2)
+							O.footstep = 0
+							playsound(src, "powersuitstep", 10, 1) // this will get annoying very fast.
+						else
+							O.footstep++
+					else
+						playsound(src, "powersuitstep", 5, 1)
+			else if(istype(H.shoes, /obj/item/clothing/shoes/clown_shoes))
 				var/obj/item/clothing/shoes/clown_shoes/O = H.shoes
 				if(H.m_intent == "run")
 					if(O.footstep >= 2)

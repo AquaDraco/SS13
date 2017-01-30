@@ -362,7 +362,7 @@ var/perseusMissionCooldown = 3000
 /obj/machinery/computer/communications/attack_hand(var/mob/user as mob)
 	if(..())
 		return
-	if (src.z > 6)
+	if (src.z > MAX_Z_LEVELS)
 		user << "\red <b>Unable to establish a connection</b>: \black You're too far away from the station!"
 		return
 
@@ -431,7 +431,7 @@ var/perseusMissionCooldown = 3000
 			if (src.currmsg)
 				dat += "<B>[src.messagetitle[src.currmsg]]</B><BR><BR>[src.messagetext[src.currmsg]]"
 				if (src.authenticated)
-					dat += "<BR><BR>\[ <A HREF='?src=\ref[src];operation=delmessage'>Delete \]"
+					dat += "<BR><BR><A HREF='?src=\ref[src];operation=delmessage'>\[Delete\]</A>"
 			else
 				src.state = STATE_MESSAGELIST
 				src.attack_hand(user)

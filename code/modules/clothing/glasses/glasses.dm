@@ -6,15 +6,6 @@
 	origin_tech = "magnets=2;engineering=2"
 	vision_flags = SEE_TURFS
 	invis_view = SEE_INVISIBLE_MINIMUM
-	action_button_name = "Toggle Brightness"
-
-	attack_self(var/mob/living/user)
-		if(invis_view == SEE_INVISIBLE_MINIMUM)
-			invis_view = 25
-		else if(invis_view == 25)
-			invis_view = SEE_INVISIBLE_MINIMUM
-
-		user << "<span class='info'>You will now see everything [invis_view == SEE_INVISIBLE_MINIMUM ? "lit" : "unlit"].</span>"
 
 /*
 /obj/item/clothing/glasses/meson/advanced
@@ -34,8 +25,30 @@
 	icon_state = "night"
 	item_state = "glasses"
 	origin_tech = "magnets=4"
+	action_button_name = "Toggle Night Vision Goggles."
 	darkness_view = 8
 	invis_view = SEE_INVISIBLE_MINIMUM
+	var/onoff = 1 //1 is on, 0 is off
+
+/obj/item/clothing/glasses/night/proc/toggle()
+	if (onoff)
+		onoff = 0
+		darkness_view = 2
+		invis_view = SEE_INVISIBLE_LIVING
+	else
+		onoff = 1
+		darkness_view = initial(darkness_view)
+		invis_view = initial(invis_view)
+	return
+
+/obj/item/clothing/glasses/night/attack_self(mob/user)
+	toggle()
+	if (onoff)
+		usr << "You switch the [name] on."
+	else
+		usr << "You switch the [name] off."
+	add_fingerprint(user)
+	..()
 
 /obj/item/clothing/glasses/eyepatch
 	name = "eyepatch"
@@ -69,6 +82,12 @@
 	desc = "Made by Uncool. Co."
 	icon_state = "hipster_glasses"
 	item_state = "hipster_glasses"
+
+/obj/item/clothing/glasses/regular/reading
+	name = "Reading Glasses"
+	desc = "Made by Nerd. Co."
+	icon_state = "readingglasses"
+	item_state = "readingglasses"
 
 /obj/item/clothing/glasses/gglasses
 	name = "Green Glasses"

@@ -77,14 +77,18 @@
 	var/allow_random_events = 0			// enables random events mid-round when set to 1
 	var/allow_ai = 0					// allow ai job
 
+	var/allow_lowpop_modes = 0			//if enabled round types can be chosen with lower population but scaled down
 	var/traitor_scaling_coeff = 6		//how much does the amount of players get divided by to determine traitors
+	var/traitor_scaling_minimum = 1		//Minimun number of traitors when scaling is enabled
 	var/changeling_scaling_coeff = 7	//how much does the amount of players get divided by to determine changelings
+	var/changeling_scaling_minimum = 1	//Minimun number of changelings when scaling is enabled
 
 	var/protect_roles_from_antagonist = 0// If security and such can be traitor/cult/other
 	var/allow_latejoin_antagonists = 0 // If late-joining players can be traitor/changeling
 	var/continuous_round_rev = 0			// Gamemodes which end instantly will instead keep on going until the round ends by escape shuttle or nuke.
 	var/continuous_round_wiz = 0
 	var/continuous_round_malf = 0
+	var/continuous_round_betrayed = 0
 	var/shuttle_refuel_delay = 12000
 	var/show_game_type_odds = 0			//if set this allows players to see the odds of each roundtype on the get revision screen
 	var/mutant_races = 0				//players can choose their mutant race before joining the game
@@ -139,6 +143,14 @@
 	var/events_focus				= 0.25
 	var/events_queue_ghost_events	= 1
 	var/events_timelocks				= 1
+
+	//getipintel configs
+	var/getipintel = 0
+	var/getipintel_email = ""
+	var/getipintel_limit = 1
+
+	//lighting
+	var/instant_lighting
 
 /datum/configuration/New()
 	var/list/L = typesof(/datum/game_mode) - /datum/game_mode
@@ -295,6 +307,14 @@
 						global.comms_allowed = 1
 				if("faction_change_delay")
 					faction_change_delay = text2num(value)
+				if("getipintel")
+					getipintel = 1
+				if("getipintelemail")
+					getipintel_email = value
+				if("getipintellimit")
+					getipintel_limit = text2num(value)
+				if("instant_lighting")
+					instant_lighting = 1
 				else
 					diary << "Unknown setting in configuration: '[name]'"
 
@@ -358,6 +378,8 @@
 					config.continuous_round_wiz		= 1
 				if("continuous_round_malf")
 					config.continuous_round_malf	= 1
+				if("continuous_round_betrayed")
+					config.continuous_round_betrayed	= 1
 				if("shuttle_refuel_delay")
 					config.shuttle_refuel_delay     = text2num(value)
 				if("show_game_type_odds")
@@ -366,8 +388,12 @@
 					config.ghost_interaction		= 1
 				if("traitor_scaling_coeff")
 					config.traitor_scaling_coeff	= text2num(value)
+				if("traitor_scaling_minimum")
+					config.traitor_scaling_minimum = text2num(value)
 				if("changeling_scaling_coeff")
 					config.changeling_scaling_coeff	= text2num(value)
+				if("changeling_scaling_minimum")
+					config.changeling_scaling_minimum = text2num(value)
 				if("probability")
 					var/prob_pos = findtext(value, " ")
 					var/prob_name = null
@@ -417,6 +443,8 @@
 					config.events_queue_ghost_events= 1
 				if("event_timelocks")
 					config.events_timelocks			= 1
+				if("allow_lowpop_modes")
+					config.allow_lowpop_modes= 1
 				else
 					diary << "Unknown setting in configuration: '[name]'"
 

@@ -4,12 +4,16 @@
 /datum/game_mode/malfunction
 	name = "AI malfunction"
 	config_tag = "malfunction"
+	required_jobs_on_minimum = list(list("Security Officer", "Warden","Head of Security"),
+									list("Security Officer", "Warden","Head of Security"),
+									list("Captain","Head of Personnel","Head of Security","Chief Engineer","Research Director","Chief Medical Officer"),
+									list("Chief Engineer","Station Engineer")
+									)//2 Security + 1 Head + Engineer
 	antag_flag = BE_MALF
 	required_players = 18
-	required_readies = 5
 	required_enemies = 1
 	recommended_enemies = 1
-	pre_setup_before_jobs = 1
+	can_run_at_minimum = 1
 
 	uplink_welcome = "Crazy AI Uplink Console:"
 	uplink_uses = 10
@@ -39,13 +43,15 @@
 	var/datum/job/ai/DummyAIjob = new
 	for(var/mob/new_player/player in player_list)
 		if(player.client && player.ready)
-			if(player.client.prefs.be_special & BE_MALF)
+			if(player.client.prefs.be_special_gamemode & BE_MALF)
 				if(!jobban_isbanned(player, "Syndicate") && !jobban_isbanned(player, "AI") && DummyAIjob.player_old_enough(player.client))
 					antag_candidates += player.mind
 	antag_candidates = shuffle(antag_candidates)
 	return antag_candidates
 
 /datum/game_mode/malfunction/pre_setup()
+	if(!antag_candidates)
+		return 0
 	var/datum/mind/chosen_ai
 	for(var/i = required_enemies, i > 0, i--)
 		chosen_ai=pick(antag_candidates)
@@ -57,6 +63,20 @@
 		ai_mind.assigned_role = "MODE" //So they aren't chosen for other jobs.
 		ai_mind.special_role = "malfunctioning AI"//So they actually have a special role/N
 		log_game("[ai_mind.key] (ckey) has been selected as a malf AI")
+	//reserve AI position for malf
+	var/datum/job/J = job_master.GetJob("AI")
+	J.current_positions = J.spawn_positions
+	// kick out any AI if they werent selected for malf
+	for(var/mob/new_player/player in player_list)
+		if(!player.mind) continue
+		if(player in malf_ai) continue
+		if(player.mind.assigned_role == "AI")
+			job_master.UnassignRole(player)
+			job_master.ReassignRole(player,1) //no_ai
+	//then setup the actual malf AIs
+	for(var/mob/new_player/malfs in malf_ai)
+		job_master.UnassignRole(malfs)
+		job_master.AssignRole(malfs, "AI")
 	return 1
 
 
@@ -73,12 +93,22 @@
 			sleep(50)
 			world.Reboot()
 			return
+		//just a bit of a sanity check for some case i cant seem to figure out
+		if(!istype(AI_mind.current,/mob/living/silicon/ai))
+			AI_mind.current.AIize()
+		//ok business as usual
 		AI_mind.current.verbs += /mob/living/silicon/ai/proc/choose_modules
 		AI_mind.current:laws = new /datum/ai_laws/malfunction
 		AI_mind.current:malf_picker = new /datum/module_picker
 		AI_mind.current:show_laws()
 
 		greet_malf(AI_mind)
+		//your soul is mine
+		for(var/mob/living/silicon/robot/robot in mob_list)
+			if(!robot.connected_ai)
+				robot.connected_ai = AI_mind.current
+				robot.connected_ai.connected_robots += robot
+				robot.lawsync()
 
 		AI_mind.special_role = "malfunction"
 
@@ -112,7 +142,10 @@
 
 /datum/game_mode/malfunction/process()
 	if (apcs >= 3 && malf_mode_declared)
-		AI_win_timeleft -= ((apcs/6)*last_tick_duration) //Victory timer now de-increments based on how many APCs are hacked. --NeoFite
+		if(minimum_mode)
+			AI_win_timeleft -= ((apcs/3)*last_tick_duration) //halved for minimum mode
+		else
+			AI_win_timeleft -= ((apcs/6)*last_tick_duration) //Victory timer now de-increments based on how many APCs are hacked. --NeoFite
 	..()
 	if (AI_win_timeleft<=0)
 		check_win()
@@ -144,6 +177,7 @@
 			if(AI_mind.current)
 				AI_mind.current.verbs -= /datum/game_mode/malfunction/proc/ai_win
 		to_nuke_or_not_to_nuke = 0
+		EventStory("The malfunctioning AI took total control over [station_name()]'s systems. There was no hope for Nanotrasen to reclaim it.",1)
 	return
 
 
@@ -212,6 +246,7 @@
 	for(var/mob/M in player_list)
 		M << 'sound/machines/Alarm.ogg'
 	world << "Self-destructing in 10"
+	EventStory("The malfunctioning AI hastily activated [station_name()]'s self destruct mechanisms. a true victory for S.E.L.F.",1)
 	for (var/i=9 to 1 step -1)
 		sleep(10)
 		world << i

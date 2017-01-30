@@ -116,10 +116,41 @@
 	name = "The Maltese Falcon"
 	desc = "The Maltese Falcon, Space Bar and Grill."
 
-/obj/structure/sign/maltesefalcon/left
+/obj/structure/sign/bar/left
+	req_access = list(access_bar)
 	icon_state = "maltesefalcon-left"
+	var/obj/structure/sign/bar/right/linked
 
-/obj/structure/sign/maltesefalcon/right
+	New()
+		..()
+		spawn(5)
+			linked = locate() in get_step(get_turf(src), EAST)
+
+			if(!linked)
+				qdel(src)
+
+	update_icon()
+		if(!linked)
+			return 0
+
+		linked.icon_state = "[icon_state]-right"
+		icon_state = "[icon_state]-left"
+
+	attack_hand(var/mob/living/M)
+		if(!src.allowed(M))
+			M << "<span class='warning'>Access denied.</span>"
+			return 0
+
+		var/list/possible_signs = list("Maltese Falcon" = "maltesefalcon", "Plasma Fire" = "plasmafire", "Winking Corgi" = "winkingcorgi", "Hole in The Hull" = "holeinthehull")
+		var/selected = input("Select a new bar sign design", "Input") in possible_signs + "Cancel"
+		if(!selected || selected == "Cancel")
+			return 0
+
+		icon_state = possible_signs[selected]
+
+		update_icon()
+
+/obj/structure/sign/bar/right
 	icon_state = "maltesefalcon-right"
 
 /obj/structure/sign/science			//These 3 have multiple types, just var-edit the icon_state to whatever one you want on the map
@@ -156,3 +187,43 @@
 	name = "\improper Portrait of Burt Lancaster"
 	desc = "This is a portrait of Burt Lancaster.  He's never actually been here.  It looks very nice."
 	icon_state = "burt"
+
+//direction signs
+/obj/structure/sign/directional
+	name = "\improper direction sign"
+	desc = "This sign tells you where to go"
+
+/obj/structure/sign/directional/bridge
+	name = "\improper bridge"
+	desc = "The bridge is located here"
+	icon_state = "direction_bridge"
+
+/obj/structure/sign/directional/eng
+	name = "\improper engineering"
+	desc = "Engineering is located here"
+	icon_state = "direction_eng"
+
+/obj/structure/sign/directional/supply
+	name = "\improper supply"
+	desc = "Supply is located here"
+	icon_state = "direction_supply"
+
+/obj/structure/sign/directional/sci
+	name = "\improper science"
+	desc = "Science is located here"
+	icon_state = "direction_sci"
+
+/obj/structure/sign/directional/sec
+	name = "\improper security"
+	desc = "Security is located here"
+	icon_state = "direction_sec"
+
+/obj/structure/sign/directional/med
+	name = "\improper medical"
+	desc = "The medbay is located here"
+	icon_state = "direction_med"
+
+/obj/structure/sign/directional/evac
+	name = "\improper evacuation"
+	desc = "The escape hallway is located here"
+	icon_state = "direction_evac"

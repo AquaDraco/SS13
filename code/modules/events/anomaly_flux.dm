@@ -1,43 +1,26 @@
 /datum/round_event_control/anomaly/anomaly_flux
 	name = "Energetic Flux"
 	typepath = /datum/round_event/anomaly/anomaly_flux
+	event_flags = EVENT_STANDARD
 	max_occurrences = 2
-	rating = list(
-				"Gameplay"	= 10,
-				"Dangerous"	= 90
-				)
-
+	weight = 15
 
 /datum/round_event/anomaly/anomaly_flux
-	startWhen = 3
-	announceWhen = 20
-	endWhen = 60
+	start_when = 30
+	alert_when = 200
+	end_when = 1200
+	spawn_zone = ANOMALY_SPAWN_NEAR //*bzzt* OH MY GOD... JC A BOMB
+	anomaly_type = /obj/effect/anomaly/flux
+	var/turf/blast_spot = null
 
+	Alert()
+		send_alerts("Localized hyper-energetic flux wave detected on long range scanners. Expected location: [impact_area.name].")
 
-/datum/round_event/anomaly/anomaly_flux/announce()
-	priority_announce("Localized hyper-energetic flux wave detected on long range scanners. Expected location: [impact_area.name].", "Anomaly Alert")
+	End()
+		if(newAnomaly)
+			blast_spot = get_turf(newAnomaly)
+		..()
 
-
-/datum/round_event/anomaly/anomaly_flux/start()
-	var/turf/T = pick(get_area_turfs(impact_area))
-	if(T)
-		newAnomaly = new /obj/effect/anomaly/flux(T.loc)
-
-
-/datum/round_event/anomaly/anomaly_flux/end()
-	if(newAnomaly && !newAnomaly.loc) //if it doesn't exist in the game world its probably in the GC
-		failed = 0
-		qdel(newAnomaly)
-		return
-	if(newAnomaly)//If it hasn't been neutralized, it's time to blow up.
-		failed = 1
-		explosion(newAnomaly, -1, 3, 5, 5)
-		qdel(newAnomaly)
-	else
-		failed = 0
-
-/datum/round_event/anomaly/anomaly_flux/declare_completion()
-	if(failed)
-		return "<b>Energetic Flux:</b> <font color='red'>The anomaly was not deactivated, causing heavy damage to [impact_area.name]!</font>"
-	else
-		return "<b>Energetic Flux:</b> <font color='green'>The flux wave in [impact_area.name] was deactivated by the crew, averting the imminent explosion.</font>"
+	OnFail()
+		if(blast_spot)
+			explosion(blast_spot, -1, 3, 5, 5)

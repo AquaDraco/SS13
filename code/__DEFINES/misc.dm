@@ -14,6 +14,7 @@
 #define MANIFEST_ERROR_ITEM		4
 
 #define TRANSITIONEDGE			7 //Distance from edge to move to another z-level
+#define MAX_Z_LEVELS			7 //how many Z levels are on the map
 
 
 
@@ -30,3 +31,17 @@
 
 #define MINERAL_MATERIAL_AMOUNT 2000
 //The amount of materials you get from a sheet of mineral like iron/diamond/glass etc
+
+//Event flags
+#define EVENT_STANDARD			1<<0	//standard events
+#define EVENT_SPECIAL			1<<1	//holidays and events not in rotation
+#define EVENT_TASK				1<<2	//events that are not in rotation that involve the crew working towards a common goal
+#define EVENT_ROUNDSTART		1<<3	//events that can happen ONLY at round start
+#define EVENT_HIDDEN			1<<4	//secret events :^)
+
+#define FOR_DVIEW(type, range, center, invis_flags) \
+	dview_mob.loc = center; \
+	dview_mob.see_invisible = invis_flags; \
+	for(type in view(range, dview_mob))
+
+

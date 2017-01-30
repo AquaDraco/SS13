@@ -1,3 +1,5 @@
+var/list/image/ghost_darkness_images = list() //this is a list of images for things ghosts should still be able to see when they toggle darkness
+
 /mob/dead/observer
 	name = "ghost"
 	desc = "It's a g-g-g-g-ghooooost!" //jinkies!
@@ -17,6 +19,9 @@
 							//If you died in the game and are a ghsot - this will remain as null.
 							//Note that this is not a reliable way to determine if admins started as observers, since they change mobs a lot.
 	var/atom/movable/following = null
+	var/image/ghostimage = null //this mobs ghost image, for deleting and stuff
+	var/ghostvision = 1 //is the ghost able to see things humans can't?
+	var/seedarkness = 1
 
 /mob/dead/observer/New(mob/body)
 	sight |= SEE_TURFS | SEE_MOBS | SEE_OBJS | SEE_SELF
@@ -24,6 +29,10 @@
 	see_in_dark = 100
 	verbs += /mob/dead/observer/proc/dead_tele
 	stat = DEAD
+
+	ghostimage = image(src.icon,src,src.icon_state)
+	ghost_darkness_images |= ghostimage
+	updateallghostimages()
 
 	var/turf/T
 	if(ismob(body))
@@ -49,6 +58,15 @@
 	real_name = name
 	..()
 
+/mob/dead/observer/Destroy()
+	if (ghostimage)
+		ghost_darkness_images -= ghostimage
+		qdel(ghostimage)
+		ghostimage = null
+		updateallghostimages()
+	return ..()
+
+
 /mob/dead/CanPass(atom/movable/mover, turf/target, height=0, air_group=0)
 	return 1
 /*
@@ -56,7 +74,7 @@ Transfer_mind is there to check if mob is being deleted/not going to have a body
 Works together with spawning an observer, noted above.
 */
 
-/mob/proc/ghostize(var/can_reenter_corpse = 1)
+/mob/proc/ghostize(var/can_reenter_corpse = 1, var/scrying = 0)
 	if(key)
 		if(!cmptext(copytext(key,1,2),"@")) //aghost
 			//Firedome check
@@ -70,6 +88,7 @@ Works together with spawning an observer, noted above.
 			var/mob/dead/observer/ghost = new(src)	//Transfer safety to observer spawning proc.
 			ghost.can_reenter_corpse = can_reenter_corpse
 			ghost.key = key
+			ghost.scrying = scrying
 			return ghost
 
 /*
@@ -88,14 +107,12 @@ This is the proc mobs get to turn into a ghost. Forked from ghostize due to comp
 		var/response = alert(src, "Are you -sure- you want to ghost?\n(You are alive. If you ghost whilst still alive you may not play again this round! You can't change your mind so choose wisely!!)","Are you sure you want to ghost?","Ghost","Stay in body")
 		if(response != "Ghost")	return	//didn't want to ghost after-all
 		resting = 1
-		if(mind)
-			if(!(mind.assigned_role in list("Perseus Security Enforcer", "Perseus Security Commander", "SPECIAL")) && (mind.special_role != "MODE"))
-				add2timeline("[src.mind.name] ([src.mind.assigned_role]) went catatonic")
 		ghostize(0)						//0 parameter is so we can never re-enter our body, "Charlie, you can never come baaaack~" :3
 	return
 
 
 /mob/dead/observer/Move(NewLoc, direct)
+	following = null
 	if(NewLoc)
 		loc = NewLoc
 		for(var/obj/effect/step_trigger/S in NewLoc)
@@ -126,7 +143,7 @@ This is the proc mobs get to turn into a ghost. Forked from ghostize due to comp
 /mob/dead/observer/Stat()
 	..()
 	statpanel("Status")
-	if (client.statpanel == "Status")
+	if (client && client.statpanel == "Status")
 		stat(null, "Station Time: [worldtime2text()]")
 		if(ticker)
 			if(ticker.mode)
@@ -196,7 +213,7 @@ This is the proc mobs get to turn into a ghost. Forked from ghostize due to comp
 	set name = "Follow" // "Haunt"
 	set desc = "Follow and haunt a mob."
 
-	var/list/mobs = getmobs()
+	var/list/mobs = getmobs(1)
 	var/input = input("Please, select a mob!", "Haunt", null, null) as null|anything in mobs
 	var/mob/target = mobs[input]
 	ManualFollow(target)
@@ -218,7 +235,11 @@ This is the proc mobs get to turn into a ghost. Forked from ghostize due to comp
 				if(loc != T)
 					loc = T
 				pos = loc
-				sleep(15)
+				alpha = 0
+				mouse_opacity = 0
+				sleep(0.6)
+			alpha = initial(alpha)
+			mouse_opacity = initial(mouse_opacity)
 			if (target == following) following = null
 
 
@@ -272,11 +293,40 @@ This is the proc mobs get to turn into a ghost. Forked from ghostize due to comp
 	set hidden = 1
 	src << "\red You are dead! You have no mind to store memory!"
 
+/mob/dead/observer/verb/toggle_ghostsee()
+	set name = "Toggle Ghost Vision"
+	set desc = "Toggles your ability to see things only ghosts can see, like other ghosts"
+	set category = "Ghost"
+	ghostvision = !(ghostvision)
+	updateghostsight()
+	usr << "You [(ghostvision?"now":"no longer")] have ghost vision."
+
 /mob/dead/observer/verb/toggle_darkness()
 	set name = "Toggle Darkness"
 	set category = "Ghost"
+	seedarkness = !(seedarkness)
+	updateghostsight()
 
-	if (see_invisible == SEE_INVISIBLE_OBSERVER_NOLIGHTING)
-		see_invisible = SEE_INVISIBLE_OBSERVER
-	else
+/mob/dead/observer/proc/updateghostsight()
+	if (!seedarkness)
 		see_invisible = SEE_INVISIBLE_OBSERVER_NOLIGHTING
+	else
+		see_invisible = SEE_INVISIBLE_OBSERVER
+		if (!ghostvision)
+			see_invisible = SEE_INVISIBLE_LIVING;
+	updateghostimages()
+
+/proc/updateallghostimages()
+	for (var/mob/dead/observer/O in player_list)
+		O.updateghostimages()
+
+/mob/dead/observer/proc/updateghostimages()
+	if (!client)
+		return
+	if (seedarkness || !ghostvision)
+		client.images -= ghost_darkness_images
+	else
+		//add images for the 60inv things ghosts can normally see when darkness is enabled so they can see them now
+		client.images |= ghost_darkness_images
+		if (ghostimage)
+			client.images -= ghostimage //remove ourself

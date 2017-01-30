@@ -16,11 +16,7 @@ datum/objective/proc/check_completion()
 datum/objective/proc/find_target()
 	var/list/possible_targets = list()
 	for(var/datum/mind/possible_target in ticker.minds)
-		if(possible_target.assigned_role in list("Perseus Security Enforcer", "Perseus Security Commander"))
-			continue
-		if(possible_target.assigned_role == "SPECIAL")
-			continue
-		if(possible_target.assigned_role == "MODE")
+		if(!possible_target.is_crewmember())
 			continue
 		if(possible_target != owner && ishuman(possible_target.current) && (possible_target.current.stat != 2))
 			possible_targets += possible_target
@@ -50,7 +46,7 @@ datum/objective/assassinate/find_target_by_role(role, role_type=0)
 
 datum/objective/assassinate/check_completion()
 	if(target && target.current)
-		if(target.current.stat == DEAD || issilicon(target.current) || isbrain(target.current) || target.current.z > 6 || !target.current.ckey) //Borgs/brains/AIs count as dead for traitor objectives. --NeoFite
+		if(target.current.stat == DEAD || issilicon(target.current) || isbrain(target.current) || target.current.z > MAX_Z_LEVELS || !target.current.ckey) //Borgs/brains/AIs count as dead for traitor objectives. --NeoFite
 			return 1
 		return 0
 	return 1

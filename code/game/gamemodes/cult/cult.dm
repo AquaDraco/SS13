@@ -26,10 +26,15 @@
 	antag_flag = BE_CULTIST
 	restricted_jobs = list("Chaplain","AI", "Cyborg", "Security Officer", "Warden", "Detective", "Head of Security", "Captain", "Head of Personnel",
 							"Perseus Security Enforcer", "Perseus Security Commander")
+	required_jobs_on_minimum = list(list("Security Officer", "Warden","Head of Security", "Captain"),
+									list("Security Officer", "Warden","Head of Security", "Captain"),
+									list("Captain","Head of Personnel","Head of Security","Chief Engineer","Research Director","Chief Medical Officer"))//2 sec + 1 head
 	protected_jobs = list()
 	required_players = 18
 	required_enemies = 6
 	recommended_enemies = 6
+	can_run_at_minimum = 1
+	minimum_enemies = 3
 
 	uplink_welcome = "Nar-Sie Uplink Console:"
 	uplink_uses = 10
@@ -79,8 +84,14 @@
 		antag_candidates -= cultist
 		cult += cultist
 		log_game("[cultist.key] (ckey) has been selected as a cultist")
-
-	return (cult.len>=required_enemies)
+	if(minimum_mode)
+		if(cult.len>= minimum_enemies)
+			acolytes_needed = 5
+			return 1
+	if(cult.len>=required_enemies)
+		return 1
+	else
+		return 0
 
 
 /datum/game_mode/cult/post_setup()
@@ -93,9 +104,7 @@
 			for(var/mob/living/carbon/human/player in player_list)
 				if(!player.mind)
 					continue
-				if(player.mind.assigned_role in list("Perseus Security Enforcer", "Perseus Security Commander"))
-					continue
-				if(player.mind.assigned_role == "SPECIAL")
+				if(!player.mind.is_crewmember())
 					continue
 				if(!(player.mind in cult))
 					possible_targets += player.mind

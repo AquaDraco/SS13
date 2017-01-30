@@ -16,9 +16,14 @@
 	config_tag = "revolution"
 	antag_flag = BE_REV
 	restricted_jobs = list("Security Officer", "Warden", "Detective", "AI", "Cyborg","Captain", "Head of Personnel", "Head of Security", "Chief Engineer", "Research Director", "Chief Medical Officer", "Perseus Security Enforcer", "Perseus Security Commander")
+	required_jobs_on_minimum = list(list("Captain"),
+									list("Captain","Head of Personnel","Head of Security","Chief Engineer","Research Director","Chief Medical Officer"),
+									list("Security Officer", "Warden","Head of Security")
+									)//Captain + Any command + 1 Sec
 	required_players = 18
-	required_enemies = 3
+	required_enemies = 1
 	recommended_enemies = 3
+	can_run_at_minimum = 1
 
 
 	uplink_welcome = "Revolutionary Uplink Console:"
@@ -40,6 +45,25 @@
 ///////////////////////////////////////////////////////////////////////////////
 //Gets the round setup, cancelling if there's not enough players at the start//
 ///////////////////////////////////////////////////////////////////////////////
+/datum/game_mode/revolution/can_start()
+	if(!..())
+		return 0
+	var/has_heads = 0
+	var/has_captain = 0
+	for(var/mob/new_player/player in player_list)
+		if(player.mind.assigned_role in command_positions)
+			has_heads++
+			if(player.mind.assigned_role == "Captain")
+				has_captain++
+	if(minimum_mode)
+		if(!has_captain)
+			return 0
+		return 1
+	else
+		if(!has_heads)
+			return 0
+		return 1
+
 /datum/game_mode/revolution/pre_setup()
 
 	if(config.protect_roles_from_antagonist)
@@ -48,9 +72,7 @@
 	var/head_check = 0
 	for(var/mob/new_player/player in player_list)
 		if(player.mind.assigned_role in command_positions)
-			head_check = 1
-			break
-
+			head_check++
 	for(var/datum/mind/player in antag_candidates)
 		for(var/job in restricted_jobs)//Removing heads and such from the list
 			if(player.assigned_role == job)
@@ -59,12 +81,14 @@
 	for (var/i=1 to max_headrevs)
 		if (antag_candidates.len==0)
 			break
+		if (head_revolutionaries.len >= head_check)
+			break
 		var/datum/mind/lenin = pick(antag_candidates)
 		antag_candidates -= lenin
 		head_revolutionaries += lenin
 		log_game("[lenin.key] (ckey) has been selected as a head rev")
 
-	if((head_revolutionaries.len < required_enemies)||(!head_check))
+	if((head_revolutionaries.len < required_enemies))
 		return 0
 
 	return 1
@@ -85,6 +109,8 @@
 	//	Removing revolutionary uplinks.	-Pete
 		equip_revolutionary(rev_mind.current)
 		update_rev_icons_added(rev_mind)
+
+	EventStory("The shift aboard [station_name()] was not like any other shift. various crewmembers felt the heads of staff did not represent them. A <b>Revolution</b> was stirring up.",1)
 
 	for(var/datum/mind/rev_mind in head_revolutionaries)
 		greet_revolutionary(rev_mind)
@@ -350,9 +376,11 @@
 	else if(finished == 1)
 		feedback_set_details("round_end_result","win - heads killed")
 		world << "\red <FONT size = 3><B> The heads of staff were killed or abandoned the station! The revolutionaries win!</B></FONT>"
+		EventStory("The revolution concluded with the heads of staff maintaining control over [station_name()]. The revolution was over",1)
 	else if(finished == 2)
 		feedback_set_details("round_end_result","loss - rev heads killed")
 		world << "\red <FONT size = 3><B> The heads of staff managed to stop the revolution!</B></FONT>"
+		EventStory("The revolution concluded with the downfall of the heads of staff. The various leaders of the revolution assumed their new position as the new leaders of [station_name()]",1)
 	..()
 	return 1
 

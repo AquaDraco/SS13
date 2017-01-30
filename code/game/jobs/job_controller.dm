@@ -72,6 +72,13 @@ var/global/datum/controller/occupations/job_master
 	Debug("AR has failed, Player: [player], Rank: [rank]")
 	return 0
 
+/datum/controller/occupations/proc/UnassignRole(var/mob/new_player/player)
+	if(player && player.mind)
+		var/datum/job/job = GetJob(player.mind.assigned_role)
+		player.mind.assigned_role = null
+		job.current_positions--
+		return 1
+	return 0
 
 /datum/controller/occupations/proc/FindOccupationCandidates(datum/job/job, level, flag)
 	Debug("Running FOC, Job: [job], Level: [level], Flag: [flag]")
@@ -83,7 +90,7 @@ var/global/datum/controller/occupations/job_master
 		if(!job.player_old_enough(player.client))
 			Debug("FOC player not old enough, Player: [player]")
 			continue
-		if(flag && (!player.client.prefs.be_special & flag))
+		if(flag && (!player.client.prefs.be_special_gamemode & flag))
 			Debug("FOC flag failed, Player: [player], Flag: [flag], ")
 			continue
 		if(player.client.prefs.GetJobDepartment(job, level) & job.flag)
@@ -91,11 +98,15 @@ var/global/datum/controller/occupations/job_master
 			candidates += player
 	return candidates
 
-/datum/controller/occupations/proc/GiveRandomJob(var/mob/new_player/player)
+/datum/controller/occupations/proc/GiveRandomJob(var/mob/new_player/player,var/no_ai)
 	Debug("GRJ Giving random job, Player: [player]")
 	for(var/datum/job/job in shuffle(occupations))
 		if(!job)
 			continue
+
+		if(no_ai)
+			if(istype(job, GetJob("AI")))
+				continue
 
 		if(istype(job, GetJob("Assistant"))) // We don't want to give him assistant, that's boring!
 			continue
@@ -160,12 +171,6 @@ var/global/datum/controller/occupations/job_master
 	var/ai_selected = 0
 	var/datum/job/job = GetJob("AI")
 	if(!job)	return 0
-	if(ticker.mode.name == "AI malfunction")	// malf. AIs are pre-selected before jobs
-		for (var/datum/mind/mAI in ticker.mode.malf_ai)
-			AssignRole(mAI.current, "AI")
-			ai_selected++
-		if(ai_selected)	return 1
-		return 0
 
 	for(var/i = job.total_positions, i > 0, i--)
 		for(var/level = 1 to 3)
@@ -293,6 +298,28 @@ var/global/datum/controller/occupations/job_master
 		AssignRole(player, "Assistant")
 	return 1
 
+/datum/controller/occupations/proc/ReassignRole(var/mob/new_player/player,var/no_ai)
+	var/list/shuffledoccupations = shuffle(occupations)
+	for(var/level = 1 to 3)
+		//Check the head jobs first each level
+		CheckHeadPositions(level)
+		for(var/datum/job/job in shuffledoccupations) // SHUFFLE ME BABY
+			if(no_ai)
+				if(istype(job, GetJob("AI")))
+					continue
+			if(player.client && player.client.prefs.GetJobDepartment(job, level) & job.flag)
+
+				// If the job isn't filled
+				if((job.current_positions < job.spawn_positions) || job.spawn_positions == -1)
+					AssignRole(player, job.title)
+					unassigned -= player
+					return
+
+	if(player.client.prefs.userandomjob)
+		GiveRandomJob(player,1)
+	else
+		AssignRole(player, "Assistant")
+
 //Gives the player the stuff he should have with his rank
 /datum/controller/occupations/proc/EquipRank(var/mob/living/H, var/rank, var/joined_late = 0)
 	var/datum/job/job = GetJob(rank)
@@ -302,7 +329,7 @@ var/global/datum/controller/occupations/job_master
 	//If we joined at roundstart we should be positioned at our workstation
 	if(!joined_late)
 		var/obj/S = null
-		for(var/obj/effect/landmark/start/sloc in landmarks_list)
+		for(var/obj/effect/landmark/start/sloc in spawn_landmarks_list)
 			if(sloc.name != rank)	continue
 			if(locate(/mob/living) in sloc.loc)	continue
 			S = sloc

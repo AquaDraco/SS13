@@ -33,14 +33,14 @@
 // Like view but bypasses luminosity check
 
 /proc/hear(var/range, var/atom/source)
+	if(source)
+		var/lum = source.luminosity
+		source.luminosity = 6
 
-	var/lum = source.luminosity
-	source.luminosity = 6
+		var/list/heard = view(range, source)
+		source.luminosity = lum
 
-	var/list/heard = view(range, source)
-	source.luminosity = lum
-
-	return heard
+		return heard
 
 /proc/alone_in_area(var/area/the_area, var/mob/must_be_alone, var/check_type = /mob/living/carbon)
 	var/area/our_area = get_area_master(the_area)
@@ -306,7 +306,20 @@ proc/isInSight(var/atom/A, var/atom/B)
 			if(G.client != null)
 				//Basically if the following isn't true, conisder them. that being that they can renter there corpse, has a mind, has a body, and that body isnt dead
 				if(!(G.can_reenter_corpse && G.mind && G.mind.current && G.mind.current.stat != DEAD))
-					if(!G.client.is_afk(afk_bracket) && (G.client.prefs.be_special & be_special_flag))
+					if(!G.client.is_afk(afk_bracket) && (!G.client.prefs.event_disable) && (G.client.prefs.be_special_gamemode & be_special_flag))
+						candidates += G.client
+		afk_bracket += 600 // Add a minute to the bracket, for every attempt
+	return candidates
+
+/proc/get_candidates_event(be_special_flag=0, afk_bracket=3000)
+	var/list/candidates = list()
+	// Keep looping until we find a non-afk candidate within the time bracket (we limit the bracket to 10 minutes (6000))
+	while(!candidates.len && afk_bracket < 6000)
+		for(var/mob/dead/observer/G in player_list)
+			if(G.client != null)
+				//Basically if the following isn't true, conisder them. that being that they can renter there corpse, has a mind, has a body, and that body isnt dead
+				if(!(G.can_reenter_corpse && G.mind && G.mind.current && G.mind.current.stat != DEAD))
+					if(!G.client.is_afk(afk_bracket) && (!G.client.prefs.event_disable) && (G.client.prefs.be_special_event & be_special_flag))
 						candidates += G.client
 		afk_bracket += 600 // Add a minute to the bracket, for every attempt
 	return candidates

@@ -28,6 +28,8 @@ var/global/list/obj/item/device/tablet/tablets_list = list()
 	var/obj/item/radio/integrated/mule/m_radio = null
 	var/obj/item/radio/integrated/beepsky/b_radio = null
 
+	var/obj/item/device/paicard/pai = null
+
 	var/list/apps_builtin = list()
 	var/list/apps_primary = list()
 	var/list/apps_secondary = list()
@@ -39,6 +41,7 @@ var/global/list/obj/item/device/tablet/tablets_list = list()
 	var/can_detonate = 1
 	var/bolted = 0
 	var/mounted = 0
+	var/photo_cooldown = 0
 
 	var/banned = 0
 
@@ -55,6 +58,9 @@ var/global/list/obj/item/device/tablet/tablets_list = list()
 	core = new /obj/item/device/tablet_core/(src)
 	core.programs.Add(new /datum/program/atmosscan)
 	core.programs.Add(new /datum/program/assignments)
+	if(can_eject && !istype(src,/obj/item/device/tablet/laptop))
+		//install a camera on all devices that are not laptops or silicons
+		core.programs.Add(new /datum/program/camera)
 	//Install built-in apps
 	for(var/x in typesof(/datum/program/builtin))
 		var/datum/program/builtin/A = new x(src)
@@ -69,16 +75,6 @@ var/global/list/obj/item/device/tablet/tablets_list = list()
 	if(src.id)
 		src.id.loc = get_turf(src.loc)
 	..()
-
-/obj/item/device/tablet/pickup(mob/user)
-	if(fon)
-		SetLuminosity(0)
-		user.AddLuminosity(f_lum)
-
-/obj/item/device/tablet/dropped(mob/user)
-	if(fon)
-		user.AddLuminosity(-f_lum)
-		SetLuminosity(f_lum)
 
 /obj/item/device/tablet/attack_self(mob/living/user)
 	user.set_machine(src)
@@ -113,8 +109,17 @@ var/global/list/obj/item/device/tablet/tablets_list = list()
 							<div class='statusDisplay'>
 							<center>
 							Owner: [core.owner], [core.ownjob]<br>
-							ID: <A href='?src=\ref[src];choice=Authenticate'>[id ? "[id.registered_name], [id.assignment]" : "----------"]</A><A href='?src=\ref[src];choice=UpdateInfo'>[id ? "Update Tablet Info" : ""]</A><br>
-							[time2text(world.realtime, "MMM DD")] [year_integer+540]<br>[worldtime2text()]<br>
+							"}
+					if(istype(user, /mob/living/silicon/pai))
+						dat += {"
+								Master: [user:master ? "[user:master] DNA: [user:master_dna]" : "None!"]<br>
+								"}
+					else
+						dat += {"
+								ID: <A href='?src=\ref[src];choice=Authenticate'>[id ? "[id.registered_name], [id.assignment]" : "----------"]</A><A href='?src=\ref[src];choice=UpdateInfo'>[id ? "Update Tablet Info" : ""]</A><br>
+								"}
+					dat += {"
+							[station_name]<br>[time2text(world.realtime, "MMM DD")] [year_integer+540]<br>[worldtime2text()]<br>
 							"}
 					for(var/datum/program/P in apps_builtin)
 						dat += "<a href='byond://?src=\ref[src];choice=load;target=\ref[P]'>[P.name][P.notifications ? " \[[P.notifications]\]" : ""]</a>"
@@ -136,9 +141,14 @@ var/global/list/obj/item/device/tablet/tablets_list = list()
 						dat += "<br>"
 					dat += {"<a href='byond://?src=\ref[src];choice=Network'>[core.neton ? "Network \[On\]" : "Network \[Off\]"]</a><br>"}
 					dat += {"<a href='byond://?src=\ref[src];choice=Light'>[fon ? "Flashlight \[On\]" : "Flashlight \[Off\]"]</a><br>"}
+					if(pai)
+						dat += {"<a href='byond://?src=\ref[src];choice=eject_pai'>Eject pAI[pai.pai ? ": [pai.pai]" : ""]</a> <a href='byond://?src=\ref[src];choice=interact_pai'>pAI Menu</a><br>"}
 		var/device = "tablet"
 		if(laptop)
 			device = "laptop"
+		if(istype(user, /mob/living/silicon/pai))
+			user:updateTablet(dat)
+			return
 		popup = new(user, device, "[src]")
 		popup.set_content(dat)
 		popup.title = {"<div align="left">ThinkTronic OS 3.1</div><div align="right"><a href='byond://?src=\ref[src];choice=Refresh'>Refresh</a><a href='byond://?src=\ref[src];choice=Close'>Close</a></div>"}
@@ -182,12 +192,17 @@ var/global/list/obj/item/device/tablet/tablets_list = list()
 			if("Light")
 				if(fon)
 					fon = 0
-					if(src in U.contents)	U.AddLuminosity(-f_lum)
-					else					SetLuminosity(0)
+					set_light(0)
 				else
 					fon = 1
-					if(src in U.contents)	U.AddLuminosity(f_lum)
-					else					SetLuminosity(f_lum)
+					set_light(f_lum)
+			if("eject_pai")
+				if(pai)
+					pai.loc = get_turf(src.loc)
+					pai = null
+			if("interact_pai")//Rather than shoot the pAI onto the floor, lets just interact with it while it is in the tablet...
+				if(pai)
+					pai.attack_self(U)
 
 		if(core && core.loaded)
 			core.loaded.use_app()
@@ -209,13 +224,13 @@ var/global/list/obj/item/device/tablet/tablets_list = list()
 				return
 			if(MS.active)
 				if(MS.z == T.z)//on the same z-level?
-					return 1
+					return MS
 					break
 				else
 					for (var/list/obj/machinery/nanonet_router/router in nanonet_routers)
 						if(router.z == T.z)//on the same z-level?
 							if(router.active)
-								return 1
+								return MS
 								break
 
 /obj/item/device/tablet/proc/check_alerts()
@@ -372,6 +387,14 @@ var/global/list/obj/item/device/tablet/tablets_list = list()
 				user.drop_item()
 				C.loc = src
 				user << "<span class='notice'>You slide \the [C] into \the [src].</span>"
+		if(istype(C, /obj/item/device/paicard))
+			if(pai)
+				user << "<span class='notice'>There is already a pai in [src].</span>"
+			else
+				user.drop_item()
+				C.loc = src
+				src.pai = C
+				user << "<span class='notice'>You put [C] in [src].</span>"
 	else
 		if(istype(C, /obj/item/device/tablet_core))
 			var/obj/item/device/tablet_core/D = C
@@ -402,6 +425,16 @@ var/global/list/obj/item/device/tablet/tablets_list = list()
 					user.show_message("\blue No radiation detected.")
 
 /obj/item/device/tablet/afterattack(atom/A as mob|obj|turf|area, mob/user as mob, proximity)
+	if(scanmode == "Camera" && !photo_cooldown)
+		captureimage(A, user, proximity)
+
+		playsound(loc, pick('sound/items/polaroid1.ogg', 'sound/items/polaroid2.ogg'), 75, 1, -3)
+
+		photo_cooldown = 1
+		spawn(64)
+			photo_cooldown = 0
+		return
+
 	if(!proximity) return
 
 	switch(scanmode)
@@ -465,6 +498,82 @@ var/global/list/obj/item/device/tablet/tablets_list = list()
 			user << "\blue Photo scanned."
 			core.files.Add(pic)
 
+//camera stuff
+
+/obj/item/device/tablet/proc/captureimage(atom/target, mob/user, flag)
+	var/list/seen
+	seen = hear(world.view, target)
+
+	var/list/turfs = list()
+	for(var/turf/T in range(1, target))
+		if(T in seen)
+			turfs += T
+
+	var/icon/temp = icon('icons/effects/96x96.dmi',"")
+	temp.Blend("#000", ICON_OVERLAY)
+	temp.Blend(camera_get_icon(turfs, target), ICON_OVERLAY)
+
+	var/obj/item/weapon/photo/P = new/obj/item/weapon/photo()
+	user.put_in_hands(P)
+	var/icon/small_img = icon(temp)
+	var/icon/ic = icon('icons/obj/items.dmi',"photo")
+	small_img.Scale(8, 8)
+	ic.Blend(small_img,ICON_OVERLAY, 10, 13)
+	P.icon = ic
+	P.img = temp
+	P.pixel_x = rand(-10, 10)
+	P.pixel_y = rand(-10, 10)
+
+	var/datum/tablet_data/photo/pic = new /datum/tablet_data/photo/
+	pic.photoinfo = P.img
+	if(target == user)
+		user.visible_message("<span class = 'notice'>[user] takes a selfie with \his tablet</span>")
+	else
+		user.visible_message("<span class = 'notice'>[user] takes a photo with \his tablet</span>")
+	core.files.Add(pic)
+
+	qdel(P)
+
+/obj/item/device/tablet/proc/camera_get_icon(list/turfs, turf/center)
+	var/atoms[] = list()
+	for(var/turf/T in turfs)
+		atoms.Add(T)
+		for(var/atom/movable/A in T)
+			if(A.invisibility) continue
+			atoms.Add(A)
+
+	var/list/sorted = list()
+	var/j
+	for(var/i = 1 to atoms.len)
+		var/atom/c = atoms[i]
+		for(j = sorted.len, j > 0, --j)
+			var/atom/c2 = sorted[j]
+			if(c2.layer <= c.layer)
+				break
+		sorted.Insert(j+1, c)
+
+	var/icon/res = icon('icons/effects/96x96.dmi', "")
+
+	for(var/atom/A in sorted)
+		var/icon/img = getFlatIcon(A)
+		if(istype(A, /mob/living) && A:lying)
+			img.Turn(A:lying)
+
+		var/offX = 32 * (A.x - center.x) + A.pixel_x + 33
+		var/offY = 32 * (A.y - center.y) + A.pixel_y + 33
+		if(istype(A, /atom/movable))
+			offX += A:step_x
+			offY += A:step_y
+
+		res.Blend(img, blendMode2iconMode(A.blend_mode), offX, offY)
+
+	for(var/turf/T in turfs)
+		res.Blend(getFlatIcon(T.loc), blendMode2iconMode(T.blend_mode), 32 * (T.x - center.x) + 33, 32 * (T.y - center.y) + 33)
+
+	return res
+
+//end camera stuff
+
 /obj/item/device/tablet/proc/id_check(mob/user as mob, choice as num)//To check for IDs; 1 for in-pda use, 2 for out of pda use.
 	if(choice == 1)
 		if (id)
@@ -507,7 +616,13 @@ var/global/list/obj/item/device/tablet/tablets_list = list()
 /obj/item/device/tablet/AltClick(var/mob/user)
 	if(!Adjacent(user)) return // Adjacent check
 	if(user.stat || user.restrained() || user.paralysis || user.stunned || user.weakened) return
-	remove_id()
+
+	if(id)
+		remove_id()
+		return
+	else
+		verb_remove_pen()
+		return
 
 /obj/item/device/tablet/proc/can_use(mob/user)
 	if(laptop && !istype(user, /mob/living/silicon))

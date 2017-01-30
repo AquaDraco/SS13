@@ -16,7 +16,7 @@ datum/controller/vote
 				del(vote)
 			vote = src
 
-	proc/process()	//called by master_controller
+	proc/process()
 		if(mode)
 			time_remaining = started_timeofday + config.vote_period
 			if(world.timeofday < started_timeofday)
@@ -144,7 +144,11 @@ datum/controller/vote
 			world.Reboot()
 
 		if(crew_transfer)
-			if(emergency_shuttle)
+			if(ticker) ticker.stalemate_check() // stalemate check
+			if(ticker && ticker.stalemate)
+				//if no living clients
+				if(emergency_shuttle) emergency_shuttle.location = 2
+			else if(emergency_shuttle)
 				emergency_shuttle.incall(1)
 				emergency_shuttle.prevent_recall = 1
 				priority_announce("The crew transfer shuttle is en route. It will arrive in [round(emergency_shuttle.timeleft()/60)] minutes.", "Crew Transfer")
@@ -187,7 +191,10 @@ datum/controller/vote
 			mode = vote_type
 			initiator = initiator_key
 			started_timeofday = world.timeofday
-			var/text = "[capitalize(mode)] vote started by [initiator]."
+			var/sound/S = sound('sound/effects/alert.ogg',0,1,0)
+			for(var/mob/M in world)
+				M << S
+			var/text = "[capitalize(mode)] vote started[initiator ? " by [initiator]" : ""]."
 			if(mode == "custom")
 				text += "\n[question]"
 			log_vote(text)
@@ -268,6 +275,14 @@ datum/controller/vote
 				if(config.allow_vote_restart || usr.client.holder)
 					initiate_vote("restart",usr.key)
 			if("crewtransfer")
+				if(world.time <= (10*60*30))
+					usr << "\red It is too early for that"
+					return
+				var/input = stripped_input(usr, "Please supply a reason", "Reason", "I ded: please restart" , 30)
+				if(input == "I ded: please restart")
+					message_admins("[usr.ckey] Asked for a crew transfer vote: [input] (AUTO DENIED)")
+					return
+				message_admins("[usr.ckey] Asked for a crew transfer vote: [input]")
 				initiate_vote("crewtransfer",usr.key)
 			if("gamemode")
 				if(config.allow_vote_mode || usr.client.holder)

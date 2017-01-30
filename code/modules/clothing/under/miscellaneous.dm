@@ -470,3 +470,34 @@
 	icon_state = "ntsuit"
 	item_state = "syndicate-blue"
 	item_color = "ntsuit"
+
+
+/obj/item/clothing/under/formalredskirt
+	name = "formal red skirt"
+	desc = "The latest in fashionable skirts."
+	icon_state = "skirtred"
+	item_state = "skirtred"
+	item_color = "skirtred"
+	fitted = 0
+
+/obj/item/clothing/under/formalblueskirt
+	name = "formal blue skirt"
+	desc = "The latest in fashionable skirts."
+	icon_state = "skirtblue"
+	item_state = "skirtblue"
+	item_color = "skirtblue"
+	fitted = 0
+
+/obj/item/clothing/under/explorer
+	name = "exploring vest"
+	desc = "when you really need to shoot first"
+	icon_state = "exploring"
+	item_state = "exploring"
+	item_color = "exploring"
+
+/obj/item/clothing/under/fembuisness
+	name = "female business skirt"
+	desc = "The latest in fashionable skirts."
+	icon_state = "femalebusiness"
+	item_state = "femalebusiness"
+	item_color = "femalebusiness"

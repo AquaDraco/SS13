@@ -1,50 +1,36 @@
 /datum/round_event_control/spider_infestation
 	name = "Spider Infestation"
 	typepath = /datum/round_event/spider_infestation
+	event_flags = EVENT_STANDARD
 	max_occurrences = 1
-	players_needed = 10
-	rating = list(
-				"Gameplay"	= 80,
-				"Dangerous"	= 70
-				)
+	weight = 5
 
 /datum/round_event/spider_infestation
-	announceWhen	= 400
+	alert_when	= 400
 
 	var/spawncount = 1
 
+	SetTimers()
+		alert_when = rand(alert_when, alert_when + 50)
 
-/datum/round_event/spider_infestation/setup()
-	announceWhen = rand(announceWhen, announceWhen + 50)
-	spawncount = rand(5, 8)
+	Setup()
+		spawncount = rand(5, 8)
 
-/datum/round_event/spider_infestation/announce()
-	priority_announce("Unidentified lifesigns detected coming aboard [station_name()]. Secure any exterior access, including ducting and ventilation.", "Lifesign Alert", 'sound/AI/aliens.ogg')
+	Alert()
+		priority_announce("Unidentified lifesigns detected coming aboard [station_name()]. Secure any exterior access, including ducting and ventilation.", "Lifesign Alert", 'sound/AI/aliens.ogg')
 
+	Start()
+		if (!prevent_stories) EventStory("Spiders started breeding aboard [station_name()].")
+		var/list/vents = list()
+		for(var/obj/machinery/atmospherics/unary/vent_pump/temp_vent in world)
+			if(temp_vent.loc.z == 1 && !temp_vent.welded && temp_vent.network)
+				if(temp_vent.network.normal_members.len > 20)
+					vents += temp_vent
 
-/datum/round_event/spider_infestation/start()
-	var/list/vents = list()
-	for(var/obj/machinery/atmospherics/unary/vent_pump/temp_vent in world)
-		if(temp_vent.loc.z == 1 && !temp_vent.welded && temp_vent.network)
-			if(temp_vent.network.normal_members.len > 20)
-				vents += temp_vent
-
-	while((spawncount >= 1) && vents.len)
-		var/obj/vent = pick(vents)
-		var/obj/effect/spider/spiderling/S = new(vent.loc)
-		if(prob(66))
-			S.grow_as = /mob/living/simple_animal/hostile/giant_spider/nurse
-		vents -= vent
-		spawncount--
-
-/datum/round_event/spider_infestation/declare_completion()
-	var/spooder_count = 0
-	for(var/mob/living/simple_animal/hostile/giant_spider/S in world)
-		if(S.stat != DEAD)
-			spooder_count++
-	if(!spooder_count)
-		return "<b>Spider Infestation:</b> <font color='green'>The crew wiped out all of the giant spiders.</font>"
-	if(spooder_count < 5)
-		return "<b>Spider Infestation:</b> <font color='green'>The crew wiped out most of the giant spiders</font>"
-	if(spooder_count >= 5)
-		return "<b>Spider Infestation:</b> <font color='red'>[station_name] was taken over by giant spiders</font>"
+		while((spawncount >= 1) && vents.len)
+			var/obj/vent = pick(vents)
+			var/obj/effect/spider/spiderling/S = new(vent.loc)
+			if(prob(66))
+				S.grow_as = /mob/living/simple_animal/hostile/giant_spider/nurse
+			vents -= vent
+			spawncount--

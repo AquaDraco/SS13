@@ -1,49 +1,50 @@
 /datum/round_event_control/wormholes
 	name = "Wormholes"
 	typepath = /datum/round_event/wormholes
+	event_flags = EVENT_STANDARD
 	max_occurrences = 3
-	rating = list(
-				"Gameplay"	= 10,
-				"Dangerous"	= 80
-				)
+	weight = 2
 
 
 /datum/round_event/wormholes
-	announceWhen = 10
-	endWhen = 60
+	alert_when = 100
+	end_when = 600
 
 	var/list/pick_turfs = list()
 	var/list/wormholes = list()
 	var/shift_frequency = 3
 	var/number_of_wormholes = 400
 
-/datum/round_event/wormholes/setup()
-	announceWhen = rand(0, 20)
-	endWhen = rand(40, 80)
+/datum/round_event/wormholes/
 
-/datum/round_event/wormholes/start()
-	for(var/turf/simulated/floor/T in world)
-		if(T.z == 1)
-			pick_turfs += T
+	SetTimers()
+		alert_when = rand(0, 200)
+		end_when = rand(400, 800)
 
-	for(var/i = 1, i <= number_of_wormholes, i++)
-		var/turf/T = pick(pick_turfs)
-		wormholes += new /obj/effect/portal/wormhole(T, null, null, -1)
+	Start()
+		if (!prevent_stories) EventStory("Wormholes started appearing suddenly around the station.")
+		for(var/turf/simulated/floor/T in world)
+			if(T.z == 1)
+				pick_turfs += T
 
-/datum/round_event/wormholes/announce()
-	priority_announce("Space-time anomalies detected on the station. There is no additional data.", "Anomaly Alert", 'sound/AI/spanomalies.ogg')
-
-/datum/round_event/wormholes/tick()
-	if(activeFor % shift_frequency == 0)
-		for(var/obj/effect/portal/wormhole/O in wormholes)
+		for(var/i = 1, i <= number_of_wormholes, i++)
 			var/turf/T = pick(pick_turfs)
-			if(T)	O.loc = T
+			wormholes += new /obj/effect/portal/wormhole(T, null, null, -1)
 
-/datum/round_event/wormholes/end()
-	portals.Remove(wormholes)
-	for(var/obj/effect/portal/wormhole/O in wormholes)
-		O.loc = null
-	wormholes.Cut()
+	Alert()
+		priority_announce("Space-time anomalies detected on the station. There is no additional data.", "Anomaly Alert", 'sound/AI/spanomalies.ogg')
+
+	Tick()
+		if(active_for % shift_frequency == 0)
+			for(var/obj/effect/portal/wormhole/O in wormholes)
+				var/turf/T = pick(pick_turfs)
+				if(T)	O.loc = T
+
+	End()
+		portals.Remove(wormholes)
+		for(var/obj/effect/portal/wormhole/O in wormholes)
+			O.loc = null
+		wormholes.Cut()
 
 
 /obj/effect/portal/wormhole
@@ -51,19 +52,15 @@
 	desc = "It looks highly unstable; It could close at any moment."
 	icon = 'icons/obj/objects.dmi'
 	icon_state = "anom"
-
 /obj/effect/portal/wormhole/attack_hand(mob/user)
 	teleport(user)
-
 /obj/effect/portal/wormhole/attackby(obj/item/I, mob/user)
 	teleport(user)
-
 /obj/effect/portal/wormhole/teleport(atom/movable/M)
 	if(istype(M, /obj/effect))	//sparks don't teleport
 		return
 	if(M.anchored && istype(M, /obj/mecha))
 		return
-
 	if(istype(M, /atom/movable))
 		var/turf/target
 		if(portals.len)

@@ -7,8 +7,6 @@
 
 	var/stat = 0 //Whether a mob is alive or dead. TODO: Move this to living - Nodrak
 
-	var/obj/screen/flash = null
-	var/obj/screen/blind = null
 	var/obj/screen/hands = null
 	var/obj/screen/pullin = null
 	var/obj/screen/internals = null
@@ -51,6 +49,7 @@
 	var/ear_deaf = null		//Carbon
 	var/ear_damage = null	//Carbon
 	var/stuttering = null	//Carbon
+	var/slurring = null	//Carbon
 	var/real_name = null
 	var/blinded = null
 	var/bhunger = 0			//Carbon
@@ -124,6 +123,8 @@
 	var/voice_name = "unidentifiable voice"
 	var/voice_message = null // When you are not understood by others (replaced with just screeches, hisses, chimpers etc.)
 	var/say_message = null // When you are understood by others. Currently only used by aliens and monkeys in their say_quote procs
+
+	var/scrying = 0
 
 	var/faction = "neutral" //Used for checking whether hostile simple animals will attack you, possibly more stuff later
 	var/move_on_shuttle = 1 // Can move on the shuttle.

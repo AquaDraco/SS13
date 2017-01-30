@@ -3,9 +3,12 @@
 	config_tag = "double_agents"
 	restricted_jobs = list("Cyborg", "AI", "Captain", "Head of Personnel", "Chief Medical Officer", "Research Director", "Chief Engineer", "Head of Security",
 							"Perseus Security Enforcer", "Perseus Security Commander") // Human / Minor roles only.
+	antag_flag = BE_DOUBLEAGENT
 	required_players = 25
 	required_enemies = 5
 	recommended_enemies = 8
+	can_run_at_minimum = 1
+	minimum_enemies = 5
 
 	traitor_name = "double agent"
 
@@ -18,6 +21,11 @@
 /datum/game_mode/traitor/double_agents/announce()
 	world << "<B>The current game mode is - Double Agents!</B>"
 	world << "<B>There are double agents killing eachother! Do not let them succeed!</B>"
+
+/datum/game_mode/traitor/double_agents/pre_setup()
+	if(antag_candidates.len % 2 == 0) //If its even
+		antag_candidates.Remove(antag_candidates[rand(1, length(antag_candidates))]) // remove 1 (un)lucky agent.
+	return ..()
 
 /datum/game_mode/traitor/double_agents/post_setup()
 	var/i = 0

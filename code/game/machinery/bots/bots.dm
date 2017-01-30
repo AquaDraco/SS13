@@ -20,12 +20,12 @@
 /obj/machinery/bot/proc/turn_on()
 	if(stat)	return 0
 	on = 1
-	SetLuminosity(initial(luminosity))
+	set_light(initial(luminosity))
 	return 1
 
 /obj/machinery/bot/proc/turn_off()
 	on = 0
-	SetLuminosity(0)
+	set_light(0)
 
 /obj/machinery/bot/proc/explode()
 	qdel(src)
@@ -184,7 +184,7 @@
 	//	for(var/turf/simulated/t in oview(src,1))
 
 	for(var/d in cardinal)
-		var/turf/simulated/T = get_step(src, d)
+		var/turf/T = get_step(src, d)
 		if(istype(T) && !T.density)
 			if(!LinkBlockedWithAccess(src, T, ID))
 				L.Add(T)

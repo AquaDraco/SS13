@@ -1,28 +1,25 @@
 /datum/round_event_control/anomaly/anomaly_vortex
 	name = "Vortex Anomaly"
 	typepath = /datum/round_event/anomaly/anomaly_vortex
+	event_flags = EVENT_STANDARD
 	max_occurrences = 5
-	rating = list(
-				"Gameplay"	= 0,
-				"Dangerous"	= 100
-				)
+	weight = 2
 
 /datum/round_event/anomaly/anomaly_vortex
-	startWhen = 10
-	announceWhen = 3
-	endWhen = 80
+	start_when = 10
+	alert_when = 200
+	end_when = 600
+	spawn_zone = ANOMALY_SPAWN_AWAY //*bzzt* I left the mechbay for 2 minutes and now there is a black hole in it.. great.
+	anomaly_type = /obj/effect/anomaly/bhole
 
+	Start()
+		..()
+		if (!prevent_stories) EventStory("[impact_area.name] was consumed by a black hole vortex.")
 
-/datum/round_event/anomaly/anomaly_vortex/announce()
-	priority_announce("Localized high-intensity vortex anomaly detected on long range scanners. Expected location: [impact_area.name]", "Anomaly Alert")
+	Alert()
+		send_alerts("Localized high-intensity vortex anomaly detected on long range scanners. Expected location: [impact_area.name].")
 
-/datum/round_event/anomaly/anomaly_vortex/start()
-	var/turf/T = pick(get_area_turfs(impact_area))
-	if(T)
-		newAnomaly = new /obj/effect/anomaly/bhole(T.loc)
-
-/datum/round_event/anomaly/anomaly_vortex/declare_completion()
-	if(failed)
-		return "<b>Vortex Anomaly:</b> <font color='red'>The anomaly was not deactivated, and most of [impact_area.name] was swallowed whole!</font>"
-	else
-		return "<b>Vortex Anomaly:</b> <font color='green'>The anomaly in [impact_area.name] was deactivated by the crew, preventing the worst of the damage that could have been caused.</font>"
+	OnFail()
+		return
+	OnPass()
+		return

@@ -21,6 +21,7 @@ alien_damage_lower 10
 alien_damage_upper 20
 paw_damage_lower 2
 paw_damage_upper 8
+handcuffed_exit_delay 1200
 
 
 drivable /turf/space
@@ -51,3 +52,28 @@ low_plasma_chance 1
 low_iron_chance 50
 low_gibtonite_chance 4
 
+#####################################
+
+[Template]
+
+place_amount_min 0
+place_amount_max 0
+
+zs 3
+zs 4
+zs 6
+
+# These objects will be placed last
+place_last /obj/machinery/power/apc
+place_last /obj/machinery/light_switch
+place_last /obj/machinery/disposal
+place_last /obj/machinery/atmospherics/unary/vent_pump
+place_last /obj/machinery/atmospherics/unary/vent_scrubber
+place_last /obj/machinery/disposalpipe/segment
+place_last /obj/effect/spawner/space/set_spawner/master
+place_last /obj/structure/lattice
+place_last /obj/structure/closet
+
+tries 10
+
+directory data/templates

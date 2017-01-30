@@ -17,6 +17,24 @@
 	prefs.save_preferences()
 	feedback_add_details("admin_verb","TGS") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
+/client/verb/toggle_ghost_messenger()
+	set name = "Show/Hide GhostMessengers"
+	set category = "Preferences"
+	set desc = ".Toggle Between seeing tablet messages or not as a ghost"
+	prefs.toggles ^= GHOST_MESSENGER
+	src << "As a ghost, you will now [(prefs.toggles & GHOST_MESSENGER) ? "see all tablet messages" : "no longer see tablet messages"]."
+	prefs.save_preferences()
+	feedback_add_details("admin_verb","TGM") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
+
+/client/verb/toggle_ghost_radio()
+	set name = "Show/Hide GhostRadio"
+	set category = "Preferences"
+	set desc = ".Toggle Between seeing all radio all the time, and only radio from nearby speakers as a ghost"
+	prefs.toggles ^= GHOST_RADIO
+	src << "As a ghost, you will now [(prefs.toggles & GHOST_RADIO) ? "see all radio messages" : "radio from nearby speakers/radios"]."
+	prefs.save_preferences()
+	feedback_add_details("admin_verb","TGR") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
+
 /client/proc/toggle_hear_radio()
 	set name = "Show/Hide RadioChatter"
 	set category = "Preferences"
@@ -121,17 +139,14 @@
 		src << sound(null, repeat = 0, wait = 0, volume = 0, channel = 2)
 	feedback_add_details("admin_verb","TAmbi") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
-//be special
-/client/verb/toggle_be_special(role in be_special_flags)
-	set name = "Toggle SpecialRole Candidacy"
+
+/client/verb/setup_character()
+	set name = "Game Preferences"
 	set category = "Preferences"
-	set desc = "Toggles which special roles you would like to be a candidate for, during events."
-	var/role_flag = be_special_flags[role]
-	if(!role_flag)	return
-	prefs.be_special ^= role_flag
-	prefs.save_preferences()
-	src << "You will [(prefs.be_special & role_flag) ? "now" : "no longer"] be considered for [role] events (where possible)."
-	feedback_add_details("admin_verb","TBeSpecial") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
+	set desc = "Allows you to access the Setup Character screen. Changes to your character won't take effect until next round, but other changes will."
+	prefs.current_tab = 1
+	prefs.ShowChoices(usr)
+
 
 /client/verb/toggle_member_publicity()
 	set name = "Toggle Membership Publicity"
@@ -156,6 +171,13 @@ var/list/ghost_forms = list("ghost","ghostking","ghostian2","ghost_red","ghost_b
 		prefs.save_preferences()
 		if(istype(mob,/mob/dead/observer))
 			mob.icon_state = new_form
+
+/client/verb/toggle_event_candidacy()
+	set name = "Toggle Event Candidacy"
+	set category = "Preferences"
+	set desc = "Toggles whether you are picked for a random event or not (for the round only)"
+	prefs.event_disable = !prefs.event_disable
+	src << "You will [prefs.event_disable ? "no longer" : "now"] be considered for random events for the round"
 
 /client/proc/toggle_statpanel()
 	set name = "Toggle Statpanel Information"

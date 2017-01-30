@@ -64,7 +64,7 @@
 
 /mob/living/ex_act(severity)
 	if(client && !blinded)
-		flick("flash", src.flash)
+		flash_eyes()
 
 /mob/living/proc/updatehealth()
 	if(status_flags & GODMODE)
@@ -73,6 +73,16 @@
 		return
 	health = maxHealth - getOxyLoss() - getToxLoss() - getFireLoss() - getBruteLoss() - getCloneLoss()
 
+//called when the mob receives a bright flash
+/mob/living/proc/flash_eyes(intensity = 1, override_blindness_check = 0, affect_silicon = 0, visual = 0, type = /obj/screen/fullscreen/flash)
+	if(check_eye_prot() < intensity && (override_blindness_check || !(disabilities & BLIND)))
+		overlay_fullscreen("flash", type)
+		spawn(25)
+			clear_fullscreen("flash")
+		return 1
+
+/mob/living/proc/check_eye_prot()
+	return 0
 
 //This proc is used for mobs which are affected by pressure to calculate the amount of pressure that actually
 //affects them once clothing is factored in. ~Errorage
@@ -324,14 +334,15 @@
 	if(iscarbon(src))
 		var/mob/living/carbon/C = src
 		C.handcuffed = initial(C.handcuffed)
-		if(C.reagents)
-			for(var/datum/reagent/R in C.reagents.reagent_list)
-				C.reagents.clear_reagents()
+		if(C.reagents && C.reagents.reagent_list.len)
+			C.reagents.clear_reagents()
 	if(ishuman(src))
 		var/mob/living/carbon/human/H = src
-		for(var/datum/reagent/R in H.blood.reagent_list)
-			H.blood.clear_reagents()
+		H.blood.clear_reagents()
 		H.blood.add_reagent("blood",145)
+		//unhusk
+		H.mutations.Remove(HUSK)
+		H.status_flags ^= DISFIGURED
 	for(var/datum/disease/D in viruses)
 		D.cure(0)
 	if(stat == 2)
@@ -536,14 +547,26 @@
 			var/obj/C = loc
 			C.container_resist(L)
 
-	//Stop drop and roll & Handcuffs
+	//Stop drop and roll & Handcuffs // There was no roll - Ahbahl
 	else if(iscarbon(L))
 		var/mob/living/carbon/CM = L
 		if(CM.on_fire && CM.canmove)
 			CM.fire_stacks -= 5
 			CM.weakened = 5
+			CM.update_canmove()
 			CM.visible_message("<span class='danger'>[CM] rolls on the floor, trying to put themselves out!</span>", \
 				"<span class='notice'>You stop, drop, and roll!</span>")
+			for(var/i=1,i<14,i++) // There is now - Ahbahl
+				sleep(3)
+				switch(CM.dir)
+					if(SOUTH)
+						CM.dir = WEST
+					if(WEST)
+						CM.dir = NORTH
+					if(NORTH)
+						CM.dir = EAST
+					if(EAST)
+						CM.dir = SOUTH
 			if(fire_stacks <= 0)
 				CM.visible_message("<span class='danger'>[CM] has successfully extinguished themselves!</span>", \
 					"<span class='notice'>You extinguish yourself.</span>")
@@ -663,12 +686,20 @@ var/list/slotTakeOffTime = list(slot_back = 80, slot_wear_mask = 40, slot_handcu
 	if(what.flags & NODROP)
 		src << "<span class='notice'>You can't remove \the [what.name], it appears to be stuck!</span>"
 		return
-	visible_message("<span class='danger'>[src] tries to remove [who]'s [what.name].</span>", \
-					"<span class='userdanger'>[src] tries to remove [who]'s [what.name].</span>")
+	if(where == slot_l_hand || where == slot_r_hand)
+		visible_message("<span class='danger'>[src] tries to take [what.name] from [who].</span>", \
+						"<span class='userdanger'>[src] tries to take [what.name] from [who].</span>")
+	else
+		visible_message("<span class='danger'>[src] tries to remove [who]'s [what.name].</span>", \
+						"<span class='userdanger'>[src] tries to remove [who]'s [what.name].</span>")
 	what.add_fingerprint(src)
 	if(do_mob(src, who, slotTakeOffTime[where]))
 		if(what && Adjacent(who))
+			what.item_stripped()
 			who.unEquip(what)
+			if(where == slot_l_hand || where == slot_r_hand)
+				src.put_in_active_hand(what)
+
 
 // The src mob is trying to place an item on someone
 // Override if a certain mob should be behave differently when placing items (can't, for example)
@@ -678,11 +709,41 @@ var/list/slotTakeOffTime = list(slot_back = 80, slot_wear_mask = 40, slot_handcu
 		src << "<span class='notice'>You can't put \the [what.name] on [who], it's stuck to your hand!</span>"
 		return
 	if(what && what.mob_can_equip(who, where, 1))
-		visible_message("<span class='notice'>[src] tries to put [what] on [who].</span>")
+		if(where == slot_l_hand || where == slot_r_hand)
+			visible_message("<span class='notice'>[src] tries to give [who] [what]</span>")
+		else
+			visible_message("<span class='notice'>[src] tries to put [what] on [who].</span>")
 		if(do_mob(src, who, slotTakeOffTime[where] * 0.5))
 			if(what && Adjacent(who))
 				src.unEquip(what)
 				who.equip_to_slot_if_possible(what, where, 0, 1)
+
+/mob/living/verb/give_item()
+	set name = "Give"
+	set category = "IC"
+	set src in oview(1)
+	var/mob/living/user = usr
+	if(!user.canUseTopic(src))
+		return
+	if(user)
+		//determine item
+		var/obj/item/what = user.get_active_hand()
+		if(!what) return
+		if(what.flags & ABSTRACT) return
+		if(what.flags & NODROP) return
+		//determine destination
+		var/list/hands = list(slot_l_hand,slot_r_hand)
+		var/where = null
+		for(var/X in shuffle(hands))
+			if(can_equip(what, X, 1))
+				where = X
+				break
+		//give the item
+		if(where)
+			user.stripPanelEquip(src, what, where)
+		else
+			user.show_message("<span class='notice'>[src]'s hands are currently full</span>", 1)
+	return
 
 //////////Animations removed, the community does not want them////////////
 /*

@@ -150,21 +150,21 @@
 		var/breath_pressure = (breath.total_moles()*R_IDEAL_GAS_EQUATION*breath.temperature)/BREATH_VOLUME
 
 		//Partial pressure of the toxins in our breath
-		var/Toxins_pp = (breath.toxins/breath.total_moles())*breath_pressure
+		var/Toxins_pp = (breath.gasses[PLASMA]/breath.total_moles())*breath_pressure
 
 		if(Toxins_pp) // Detect toxins in air
 
-			adjustToxLoss(breath.toxins*250)
+			adjustToxLoss(breath.gasses[PLASMA]*250)
 			toxins_alert = max(toxins_alert, 1)
 
-			toxins_used = breath.toxins
+			toxins_used = breath.gasses[PLASMA]
 
 		else
 			toxins_alert = 0
 
 		//Breathe in toxins and out oxygen
-		breath.toxins -= toxins_used
-		breath.oxygen += toxins_used
+		breath.add_gas(PLASMA, -1 * toxins_used)
+		breath.add_gas(OXYGEN, toxins_used)
 
 		if(breath.temperature > (T0C+66) && !(COLD_RESISTANCE in mutations)) // Hot air hurts :(
 			if(prob(20))
@@ -336,22 +336,19 @@
 		//blame the person who coded them. Temporary fix added.
 
 
-		client.screen.Remove(global_hud.blurry,global_hud.druggy,global_hud.vimpaired)
-
-		if ((blind && stat != 2))
-			if ((blinded))
-				blind.layer = 18
+		if(stat != DEAD)
+			if(disabilities & NEARSIGHTED)
+				overlay_fullscreen("nearsighted", /obj/screen/fullscreen/impaired, 1)
 			else
-				blind.layer = 0
-
-				if (disabilities & NEARSIGHTED)
-					client.screen += global_hud.vimpaired
-
-				if (eye_blurry)
-					client.screen += global_hud.blurry
-
-				if (druggy)
-					client.screen += global_hud.druggy
+				clear_fullscreen("nearsighted")
+			if(eye_blurry)
+				overlay_fullscreen("blurry", /obj/screen/fullscreen/blurry)
+			else
+				clear_fullscreen("blurry")
+			if(druggy)
+				overlay_fullscreen("high", /obj/screen/fullscreen/high)
+			else
+				clear_fullscreen("high")
 
 		if (stat != 2)
 			if (machine)

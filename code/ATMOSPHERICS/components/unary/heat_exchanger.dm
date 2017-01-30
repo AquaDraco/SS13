@@ -13,10 +13,11 @@
 	var/update_cycle
 
 	update_icon()
-		if(node)
+		if(NODE_1)
 			icon_state = "intact"
 		else
 			icon_state = "exposed"
+		color = pipe_color
 
 		return
 

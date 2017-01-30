@@ -6,10 +6,8 @@
 	var/intact = 1
 
 	//Properties for open tiles (/floor)
-	var/oxygen = 0
-	var/carbon_dioxide = 0
-	var/nitrogen = 0
-	var/toxins = 0
+	var/list/gasses = list(OXYGEN = 0, CARBONDIOXIDE = 0, NITROGEN = 0, PLASMA = 0)
+
 
 	//Properties for airtight tiles (/wall)
 	var/thermal_conductivity = 0.05
@@ -21,15 +19,37 @@
 	var/blocks_air = 0
 	var/icon_old = null
 
+	var/dynamic_lighting = 0
+
 	flags = 0
+
+	//Added these back as overrides to the normal gas quantities. This is the reason I despise varedited instances where a pre-set will do.
+	var/oxygen
+	var/nitrogen
+	var/toxins
+	var/carbon_dioxide
 
 /turf/New()
 	..()
+	turfs += src
+	if(nitrogen)
+		gasses[NITROGEN] = nitrogen
+	if(oxygen)
+		gasses[OXYGEN] = oxygen
+	if(toxins)
+		gasses[PLASMA] = toxins
+	if(carbon_dioxide)
+		gasses[CARBONDIOXIDE] = carbon_dioxide
+
 	for(var/atom/movable/AM as mob|obj in src)
 		spawn( 0 )
 			src.Entered(AM)
 			return
 	return
+
+/turf/Destroy()
+	turfs -= src
+	..()
 
 // Adds the adjacent turfs to the current atmos processing
 /turf/Del()
@@ -146,6 +166,8 @@
 
 /turf/proc/inertial_drift(atom/movable/A as mob|obj)
 	if(!(A.last_move))	return
+	if(A.pulledby && get_dist(A,A.pulledby) == 1)
+		return
 	if((istype(A, /mob/) && src.x > 2 && src.x < (world.maxx - 1) && src.y > 2 && src.y < (world.maxy-1)))
 		var/mob/M = A
 		if(M.Process_Spacemove(1))
@@ -178,28 +200,43 @@
 		qdel(L)
 
 //Creates a new turf
-/turf/proc/ChangeTurf(var/path)
+/turf/proc/ChangeTurf(var/path, var/force_lighting_update = 0)
 	if(!path)			return
 	if(path == type)	return src
-	var/old_lumcount = lighting_lumcount - initial(lighting_lumcount)
-	var/old_opacity = opacity
 	if(air_master)
 		air_master.remove_from_active(src)
 
+	if (!lighting_corners_initialised)
+		for (var/i = 1 to 4)
+			if (corners[i]) // Already have a corner on this direction.
+				continue
+
+			corners[i] = new/datum/lighting_corner(src, LIGHTING_CORNER_DIAGONAL[i])
+
+	var/old_opacity = opacity
+	var/old_dynamic_lighting = dynamic_lighting
+	var/old_affecting_lights = affecting_lights
+	var/old_lighting_overlay = lighting_overlay
+	var/old_corners = corners
+
 	var/turf/W = new path(src)
+
+	lighting_corners_initialised = TRUE
+	recalc_atom_opacity()
+	lighting_overlay = old_lighting_overlay
+	affecting_lights = old_affecting_lights
+	corners = old_corners
+	if((old_opacity != opacity) || (dynamic_lighting != old_dynamic_lighting) || force_lighting_update)
+		reconsider_lights()
+	if(dynamic_lighting != old_dynamic_lighting)
+		if(dynamic_lighting)
+			lighting_build_overlay()
+		else
+			lighting_clear_overlay()
 
 	if(istype(W, /turf/simulated))
 		W:Assimilate_Air()
 		W.RemoveLattice()
-
-	W.lighting_lumcount += old_lumcount
-	if(old_lumcount != W.lighting_lumcount)	//light levels of the turf have changed. We need to shift it to another lighting-subarea
-		W.lighting_changed = 1
-		lighting_controller.changed_turfs += W
-
-	if(old_opacity != W.opacity)			//opacity has changed. Need to update surrounding lights
-		if(W.lighting_lumcount)				//unless we're being illuminated, don't bother (may be buggy, hard to test)
-			W.UpdateAffectingLights()
 
 	W.levelupdate()
 	W.CalculateAdjacentTurfs()
@@ -208,10 +245,9 @@
 //////Assimilate Air//////
 /turf/simulated/proc/Assimilate_Air()
 	if(air)
-		var/aoxy = 0//Holders to assimilate air from nearby turfs
-		var/anitro = 0
-		var/aco = 0
-		var/atox = 0
+		var/list/air_gasses = list() //Holder list to assimilate air from nearby turfs
+		for (var/G in air.gasses)
+			air_gasses[G] = 0
 		var/atemp = 0
 		var/turf_count = 0
 
@@ -223,16 +259,15 @@
 			else if(istype(T,/turf/simulated/floor))
 				var/turf/simulated/S = T
 				if(S.air)//Add the air's contents to the holders
-					aoxy += S.air.oxygen
-					anitro += S.air.nitrogen
-					aco += S.air.carbon_dioxide
-					atox += S.air.toxins
+					for (var/G in S.air.gasses)
+						if (!(G in air_gasses))
+							air_gasses[G] = S.air.gasses[G]
+						else
+							air_gasses[G] += S.air.gasses[G]
 					atemp += S.air.temperature
 				turf_count ++
-		air.oxygen = (aoxy/max(turf_count,1))//Averages contents of the turfs, ignoring walls and the like
-		air.nitrogen = (anitro/max(turf_count,1))
-		air.carbon_dioxide = (aco/max(turf_count,1))
-		air.toxins = (atox/max(turf_count,1))
+		for (var/G in air_gasses)
+			air.gasses[G] = (air_gasses[G]/max(turf_count,1))//Averages contents of the turfs, ignoring walls and the like
 		air.temperature = (atemp/max(turf_count,1))//Trace gases can get bant
 		if(air_master)
 			air_master.add_to_active(src)

@@ -149,13 +149,26 @@ ALLOW_HOLIDAYS
 #USEIRCBOT
 
 ##Defines the ticklag for the world.  0.9 is the normal one, 0.5 is smoother.
-TICKLAG 0.75
+TICKLAG 0.6
 
 ## Defines if Tick Compensation is used.  It results in a minor slowdown of movement of all mobs, but attempts to result in a level movement speed across all ticks.  Recommended if tickrate is lowered.
-TICKCOMP 0
+#TICKCOMP
 
 ## Comment this out to disable automuting
 #AUTOMUTE_ON
 
 ## Communication key for receiving data through world/Topic(), you don't want to give this out
 #COMMS_KEY default_pwd
+
+##Uncomment to enable the ProxyBan system.
+#GETIPINTEL
+
+##Email used in proxyban,incase an issue happens with the proxy checker ( http://getipintel.net/ ) you will be emailed.
+GETIPINTELEMAIL
+
+##Set the limit you want to use for proxybans(Ranges from 0 to 1, but you should never put 0 really.), 1 means that the new player will be kicked from the game if his ip
+##is in the proxy manual list, while a range from 0 to 1 is dealt by getipintel's magic. A suggested value is either 0.99 or 1, but it depends on you.
+GETIPINTELLIMIT 0.99
+
+##Uncomment to enable instant lighting, update lighting without delay
+#INSTANT_LIGHTING

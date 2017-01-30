@@ -114,9 +114,12 @@
 				</div>
 			</body>
 			</html>"}
-	usr << browse(dat, "window=pai;size=640x480;border=0;can_close=1;can_resize=1;can_minimize=1;titlebar=1")
-	onclose(usr, "pai")
-	temp = null
+	if(!istype(usr,/mob/living/silicon/pai))
+		dat = null
+	if(dat)
+		usr << browse(dat, "window=pai;size=640x480;border=0;can_close=1;can_resize=1;can_minimize=1;titlebar=1")
+		onclose(usr, "pai")
+		temp = null
 	return
 
 
@@ -643,10 +646,10 @@
 		dat += "Air Pressure: [round(pressure,0.1)] kPa<br>"
 
 		if (total_moles)
-			var/o2_level = environment.oxygen/total_moles
-			var/n2_level = environment.nitrogen/total_moles
-			var/co2_level = environment.carbon_dioxide/total_moles
-			var/plasma_level = environment.toxins/total_moles
+			var/o2_level = environment.gasses[OXYGEN]/total_moles
+			var/n2_level = environment.gasses[NITROGEN]/total_moles
+			var/co2_level = environment.gasses[CARBONDIOXIDE]/total_moles
+			var/plasma_level = environment.gasses[PLASMA]/total_moles
 			var/unknown_level =  1-(o2_level+n2_level+co2_level+plasma_level)
 			dat += "Nitrogen: [round(n2_level*100)]%<br>"
 			dat += "Oxygen: [round(o2_level*100)]%<br>"

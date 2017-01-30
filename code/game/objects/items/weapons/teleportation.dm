@@ -138,7 +138,7 @@ Frequency:
 
 /obj/item/weapon/hand_tele/attack_self(mob/user as mob)
 	var/turf/current_location = get_turf(user)//What turf is the user on?
-	if(!current_location||current_location.z==2||current_location.z>=7)//If turf was not found or they're on z level 2 or >7 which does not currently exist.
+	if(!current_location||current_location.z==2||current_location.z>7)//If turf was not found or they're on z level 2 or >7 which does not currently exist.
 		user << "<span class='notice'>\The [src] is malfunctioning.</span>"
 		return
 	var/list/L = list(  )
@@ -152,6 +152,8 @@ Frequency:
 	for(var/turf/T in orange(10))
 		if(T.x>world.maxx-8 || T.x<8)	continue	//putting them at the edge is dumb
 		if(T.y>world.maxy-8 || T.y<8)	continue
+		if(T.flags & NOJAUNT)
+			continue
 		turfs += T
 	if(turfs.len)
 		L["None (Dangerous)"] = pick(turfs)
@@ -162,6 +164,10 @@ Frequency:
 		user.show_message("<span class='notice'>\The [src] is recharging!</span>")
 		return
 	var/T = L[t1]
+	if(istype(T, /turf) && T:flags & NOJAUNT)
+		user.show_message("<span class='warning'>Failed to lock on to target.</span>")
+		return
+
 	for(var/mob/O in hearers(user, null))
 		O.show_message("<span class='notice'>Locked In.</span>", 2)
 	var/obj/effect/portal/P = new /obj/effect/portal(get_turf(src), T, src)

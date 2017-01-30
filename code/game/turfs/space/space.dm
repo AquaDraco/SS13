@@ -1,3 +1,53 @@
+var/datum/space_grid/space_grid = new()
+
+/datum/space_grid
+	var/list/grid = list(1, 1, 1,
+						 1, 1, 1)
+
+	var/column_size = 3
+
+	New()
+		..()
+		grid = GenerateGrid()
+
+	proc/GenerateGrid()
+		var/list/possibilities = list(1, 3, 4,
+									  5, 7, 6)
+
+		var/list/generated = list()
+		while(length(possibilities))
+			var/picked = pick(possibilities)
+			generated += picked
+			possibilities -= picked
+
+		return generated
+
+	proc/GetDirectionalZ(var/z, var/dir)
+		var/new_index = 0
+		switch(dir)
+			if(NORTH)
+				new_index = (grid.Find(z) + column_size)
+
+			if(SOUTH)
+				new_index = (grid.Find(z) - column_size)
+
+			if(EAST)
+				new_index = (grid.Find(z) + 1)
+
+			if(WEST)
+				new_index = (grid.Find(z) - 1)
+
+		if(new_index > length(grid))
+			new_index -= length(grid)
+		else if(new_index <= 0)
+			new_index += length(grid)
+
+		// Safety.
+		if(new_index <= 0 || new_index > length(grid))
+			return pick(grid)
+
+		return grid[new_index]
+
 /turf/space
 	icon = 'icons/turf/space.dmi'
 	name = "\proper space"
@@ -57,7 +107,7 @@
 
 		// Okay, so let's make it so that people can travel z levels but not nuke disks!
 		// if(ticker.mode.name == "nuclear emergency")	return
-		if(A.z > 6) return
+		if(A.z > MAX_Z_LEVELS) return
 		if (A.x <= TRANSITIONEDGE || A.x >= (world.maxx - TRANSITIONEDGE - 1) || A.y <= TRANSITIONEDGE || A.y >= (world.maxy - TRANSITIONEDGE - 1))
 			if(istype(A, /obj/effect/meteor))
 				qdel(A)
@@ -92,6 +142,25 @@
 			var/move_to_z = src.z
 			var/safety = 1
 
+			//Check if it's a mob pulling an object
+			var/obj/was_pulling = null
+			var/mob/living/MOB = null
+			if(isliving(A))
+				MOB = A
+				if(MOB.pulling)
+					was_pulling = MOB.pulling //Store the object to transition later
+
+			var/direction
+			if(x <= TRANSITIONEDGE)
+				direction = WEST
+			else if(x >= (world.maxx - TRANSITIONEDGE - 1))
+				direction = EAST
+			else if(src.y <= TRANSITIONEDGE)
+				direction = SOUTH
+			else if(A.y >= (world.maxy - TRANSITIONEDGE - 1))
+				direction = NORTH
+
+			move_to_z = space_grid.GetDirectionalZ(move_to_z, direction)
 			while(move_to_z == src.z)
 				var/move_to_z_str = pickweight(accessable_z_levels)
 				move_to_z = text2num(move_to_z_str)
@@ -124,6 +193,10 @@
 
 
 			spawn (0)
+				if(was_pulling && MOB) //Carry the object they were pulling over when they transition
+					was_pulling.loc = MOB.loc
+					MOB.pulling = was_pulling
+					was_pulling.pulledby = MOB
 				if ((A && A.loc))
 					A.loc.Entered(A)
 
